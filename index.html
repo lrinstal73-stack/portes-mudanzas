@@ -89,7 +89,7 @@
 
             const { error } = await supabaseClient
                 .from('portes')
-                .insert([{ cliente: cli, precio: parseInt(pre), ruta: rut }]);
+                .insert([{ cliente: cli, precio: parseInt(pre), origen: rut }]);
 
             if (error) alert("Error al guardar");
             else {
