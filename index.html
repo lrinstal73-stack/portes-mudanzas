@@ -2,41 +2,64 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Logística Luis</title>
+    <title>Logistica Luis</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { background: #0f1014; color: white; font-family: sans-serif; padding: 20px; }
+        .container { max-width: 400px; margin: auto; }
+        .resumen { background: #10b981; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px; font-weight: bold; }
+        input, button { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: none; box-sizing: border-box; }
+        button { background: #3b82f6; color: white; font-weight: bold; cursor: pointer; }
+        .card { background: #1c1d24; padding: 10px; margin-top: 10px; border-left: 4px solid #3b82f6; }
+    </style>
 </head>
-<body style="background:#0f1014; color:white; font-family:sans-serif; padding:20px;">
-    <div style="max-width:400px; margin:auto;">
-        <h2 id="balance">Cargando...</h2>
-        <input type="text" id="cliente" placeholder="Cliente" style="width:100%; margin:5px 0; padding:10px;">
-        <input type="number" id="precio" placeholder="Precio" style="width:100%; margin:5px 0; padding:10px;">
-        <button onclick="guardar()" style="width:100%; padding:10px; background:blue; color:white; border:none;">GUARDAR</button>
-        <div id="lista" style="margin-top:20px;"></div>
+<body>
+    <div class="container">
+        <div class="resumen">TOTAL: <span id="balance">0</span>€</div>
+        <input type="text" id="cliente" placeholder="Cliente">
+        <input type="number" id="precio" placeholder="Precio">
+        <input type="text" id="ruta" placeholder="Ruta">
+        <button id="btn">GUARDAR</button>
+        <div id="lista"></div>
     </div>
 
-    <script>
-        const SB_URL = "https://hkrbyjxspermnedciqrr.supabase.co";
-        // PEGA AQUÍ LA CLAVE QUE HAS COPIADO DE TU PANEL AHORA MISMO
-        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTEyODcsImV4cCI6MjA5MDEyNzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo"; 
+<script>
+    var url = "https://hkrbyjxspermnedciqrr.supabase.co";
+    var key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzE2OSwiZXhwIjoyMDU4NjUzMTY5fQ.mHnZSi6ImFubzcy";
+    var sb = window.supabase.createClient(url, key);
 
-        const supabaseClient = window.supabase.createClient(SB_URL, SB_KEY);
+    function cargar() {
+        sb.from('portes').select('*').order('created_at', { ascending: false })
+        .then(function(res) {
+            if (res.error) return console.error(res.error);
+            var filtrados = res.data.filter(function(p) { return p.cliente && p.precio; });
+            var total = filtrados.reduce(function(acc, p) { return acc + (Number(p.precio) || 0); }, 0);
+            document.getElementById('balance').innerText = total;
+            document.getElementById('lista').innerHTML = filtrados.map(function(p) {
+                return '<div class="card"><b>' + p.cliente + '</b>: ' + p.precio + '€<br><small>' + (p.origen || "") + '</small></div>';
+            }).join('');
+        });
+    }
 
-        async function cargar() {
-            const { data, error } = await supabaseClient.from('portes').select('*');
-            if (error) { document.getElementById('balance').innerText = "Error API"; return; }
-            document.getElementById('balance').innerText = "Total: " + data.reduce((a, b) => a + (Number(b.precio) || 0), 0) + "€";
-            document.getElementById('lista').innerHTML = data.map(p => `<div>${p.cliente}: ${p.precio}€</div>`).join('');
-        }
+    document.getElementById('btn').onclick = function() {
+        var c = document.getElementById('cliente').value;
+        var p = document.getElementById('precio').value;
+        var r = document.getElementById('ruta').value;
+        if (!c || !p) return alert("Faltan datos");
 
-        async function guardar() {
-            const c = document.getElementById('cliente').value;
-            const p = document.getElementById('precio').value;
-            const { error } = await supabaseClient.from('portes').insert([{ cliente: c, precio: parseInt(p) }]);
-            if (error) alert("Error: " + error.message);
-            else { alert("Guardado"); cargar(); }
-        }
-        cargar();
-    </script>
+        sb.from('portes').insert([{ cliente: c, precio: parseInt(p), origen: r }])
+        .then(function(res) {
+            if (res.error) alert("Error: " + res.error.message);
+            else {
+                document.getElementById('cliente').value = "";
+                document.getElementById('precio').value = "";
+                document.getElementById('ruta').value = "";
+                cargar();
+            }
+        });
+    };
+
+    cargar();
+</script>
 </body>
 </html>
