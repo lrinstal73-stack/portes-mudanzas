@@ -1,730 +1,107 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Portes &amp; Mudanzas</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Logística | Luis</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --primary: #3b82f6; --success: #10b981; --dark: #0f1014; --card: #1c1d24; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: white; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: auto; }
+        
+        /* Resumen Dinero */
+        .resumen-total { background: var(--success); padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 25px; border: 1px solid #059669; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2); }
+        .resumen-total small { text-transform: uppercase; letter-spacing: 1px; opacity: 0.9; }
+        .resumen-total div { font-size: 2.5rem; font-weight: bold; }
 
-  <!-- PWA -->
-  <meta name="theme-color" content="#0f0f0d" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Portes" />
-
-  <!-- Manifest inline via data URI (para Android Chrome) -->
-  <link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Portes%20%26%20Mudanzas%22%2C%22short_name%22%3A%22Portes%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f0f0d%22%2C%22theme_color%22%3A%22%230f0f0d%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%3D%2527http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%2527%2520viewBox%3D%27-4%20-4%20184%20184%27%253E%253Crect%2520width%3D%27176%27%2520height%3D%27176%27%2520rx%3D%2740%27%2520fill%3D%27%230f0f0d%27%2F%253E%253Ctext%2520x%3D%2788%27%2520y%3D%27122%27%2520font-size%3D%27110%27%2520text-anchor%3D%27middle%27%253E%25F0%259F%259A%259A%253C%2Ftext%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D" />
-
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600;700&display=swap" />
-
-  <!-- React + Babel -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-  <style>
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    html, body { margin: 0; padding: 0; background: #0f0f0d; overscroll-behavior: none; }
-    body { padding-top: env(safe-area-inset-top); }
-    select option { background: #222218; color: #f5f0e8; }
-    ::-webkit-scrollbar { display: none; }
-    input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
-  </style>
+        /* Tarjetas de Historial */
+        .porte-card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 12px; border-left: 5px solid var(--primary); position: relative; }
+        .precio-tag { position: absolute; top: 15px; right: 15px; color: var(--success); font-weight: bold; font-size: 1.2rem; }
+        
+        /* Botones y Formulario */
+        button { width: 100%; padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .btn-main { background: var(--primary); color: white; }
+        input { width: 100%; padding: 10px; margin: 8px 0; border-radius: 6px; border: 1px solid #333; background: #25262e; color: white; box-sizing: border-box; }
+        
+        h2 { border-bottom: 1px solid #333; padding-bottom: 10px; margin-top: 30px; }
+    </style>
 </head>
 <body>
-  <div id="root"></div>
-
-  <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
-
-    // ─── THEME ───────────────────────────────────────────────────────────────
-    const T = {
-      bg: "#0f0f0d", surface: "#1a1a16", card: "#222218", border: "#2e2e24",
-      amber: "#f59e0b", amberDim: "#92600a", orange: "#ea580c",
-      green: "#22c55e", red: "#ef4444", blue: "#60a5fa",
-      text: "#f5f0e8", muted: "#6b6b5a", faint: "#333328",
-    };
-
-    // ─── STORAGE (localStorage) ───────────────────────────────────────────────
-    const NS = "portes:";
-    const save = (key, val) => { try { localStorage.setItem(NS + key, JSON.stringify(val)); } catch {} };
-    const load = (key, def) => { try { const r = localStorage.getItem(NS + key); return r ? JSON.parse(r) : def; } catch { return def; } };
-
-    // ─── ICONS ────────────────────────────────────────────────────────────────
-    const Icon = ({ d, size = 20, color = T.text, style: st = {} }) => (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
-        strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={st}>
-        <path d={d} />
-      </svg>
-    );
-    const IC = {
-      calendar: "M8 2v3M16 2v3M3 8h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z",
-      truck:    "M1 3h15v13H1zM16 8h4l3 3v5h-7V8zM5.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM18.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z",
-      chart:    "M3 3v18h18M7 16l4-4 4 4 4-4",
-      plus:     "M12 5v14M5 12h14",
-      check:    "M20 6L9 17l-5-5",
-      x:        "M18 6L6 18M6 6l12 12",
-      arrow:    "M5 12h14M12 5l7 7-7 7",
-      fuel:     "M3 22V8l6-6 6 6v14M9 22V12h6v10M12 2v4",
-      users:    "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
-      money:    "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
-      edit:     "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z",
-      trash:    "M3 6h18M8 6V4h8v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6",
-      back:     "M19 12H5M12 19l-7-7 7-7",
-      phone:    "M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z",
-      box:      "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96L12 12.01l8.73-5.05M12 22.08V12",
-      clock:    "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2",
-      download: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3",
-      upload:   "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12",
-    };
-
-    // ─── HELPERS ─────────────────────────────────────────────────────────────
-    const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-    const DAYS_SHORT = ["L","M","X","J","V","S","D"];
-    const todayStr = () => new Date().toISOString().split("T")[0];
-    const fmt = (iso) => { if (!iso) return ""; const [y,m,d] = iso.split("-"); return `${d}/${m}/${y}`; };
-    const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2,5);
-
-    const ESTADOS = {
-      pendiente: { label: "Pendiente", color: T.amber },
-      realizado: { label: "Realizado", color: T.green },
-      cancelado: { label: "Cancelado", color: T.red },
-    };
-    const OBJETOS_OPTS = ["Sofá 2/3 plazas","Cama individual","Cama doble","Armario","Mesa grande","Mesa pequeña","Mueble salón","Frigorífico","Lavadora","Televisor","Cajas","Otros"];
-    const EXTRAS_OPTS = ["Montaje/desmontaje","Embalaje","Piano","Objetos frágiles","Limpieza","Guardamuebles"];
-    const GASTO_TIPOS = ["Gasolina/Diésel","Peaje","Aparcamiento","Mantenimiento","Neumáticos","ITV/Seguros","Otros"];
-    const ICONS_GASTO = { "Gasolina/Diésel": IC.fuel, "Peaje": IC.arrow, "Aparcamiento": IC.truck,
-      "Mantenimiento": IC.edit, "Neumáticos": IC.clock, "ITV/Seguros": IC.check, "Otros": IC.box };
-
-    // ─── STYLES ──────────────────────────────────────────────────────────────
-    const S = {
-      app: { background: T.bg, minHeight: "100vh", fontFamily: "'Barlow', sans-serif", color: T.text, paddingBottom: 70, maxWidth: 480, margin: "0 auto", position: "relative" },
-      header: { padding: "16px 20px 14px", background: T.surface, borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, zIndex: 10 },
-      nav: { position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: T.surface, borderTop: `1px solid ${T.border}`, display: "flex", zIndex: 20, height: 62, paddingBottom: "env(safe-area-inset-bottom)" },
-      navBtn: (a) => ({ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, border: "none", background: "transparent", cursor: "pointer", color: a ? T.amber : T.muted, fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "inherit", borderTop: a ? `2px solid ${T.amber}` : "2px solid transparent" }),
-      card: (x = {}) => ({ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: 16, ...x }),
-      input: { background: T.faint, border: `1px solid ${T.border}`, borderRadius: 8, padding: "10px 12px", color: T.text, fontSize: 15, fontFamily: "inherit", width: "100%", outline: "none" },
-      label: { fontSize: 11, color: T.muted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 5, display: "block" },
-      btn: (v = "primary", x = {}) => ({
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 6, border: "none", borderRadius: 8,
-        cursor: "pointer", fontFamily: "inherit", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
-        fontSize: 13, padding: "12px 18px",
-        ...(v === "primary" ? { background: T.amber, color: "#000" } : {}),
-        ...(v === "danger"  ? { background: T.red, color: "#fff" } : {}),
-        ...(v === "ghost"   ? { background: "transparent", color: T.muted, border: `1px solid ${T.border}` } : {}),
-        ...(v === "success" ? { background: T.green, color: "#000" } : {}),
-        ...x,
-      }),
-      fab: { position: "fixed", bottom: 78, right: "calc(50% - 228px)", background: T.amber, border: "none", borderRadius: "50%", width: 52, height: 52, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: `0 4px 20px ${T.amberDim}88`, zIndex: 15 },
-      badge: (c) => ({ background: c + "22", color: c, border: `1px solid ${c}44`, borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", display: "inline-block" }),
-      modal: { position: "fixed", inset: 0, background: "#000b", zIndex: 100, display: "flex", alignItems: "flex-end" },
-      modalBox: { background: T.surface, borderRadius: "16px 16px 0 0", width: "100%", maxHeight: "92vh", overflowY: "auto", padding: 20, borderTop: `2px solid ${T.amber}`, paddingBottom: "calc(20px + env(safe-area-inset-bottom))" },
-      row: (x = {}) => ({ display: "flex", alignItems: "center", gap: 8, ...x }),
-      g2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-      sec: { padding: "16px 16px 0" },
-      chip: (s) => ({ padding: "6px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600, border: `1px solid ${s ? T.amber : T.border}`, background: s ? T.amber + "22" : "transparent", color: s ? T.amber : T.muted, cursor: "pointer", display: "inline-block", whiteSpace: "nowrap" }),
-    };
-
-    // ════════════════════════════════════════════════════════════════════════════
-    // TRABAJO FORM
-    // ════════════════════════════════════════════════════════════════════════════
-    function TrabajoForm({ initial, onSave, onClose }) {
-      const normObj = (arr) => (arr || []).map(o => typeof o === "string" ? { nombre: o, cantidad: 1 } : o);
-      const [f, setF] = useState(() => {
-        const base = initial || { cliente: "", telefono: "", fecha: todayStr(), hora_inicio: "", hora_fin: "", cp_salida: "", cp_llegada: "", localidad_salida: "", localidad_llegada: "", habitaciones: "1", personas: "2", precio: "", estado: "pendiente", objetos: [], extras: [], notas: "", parking: "No" };
-        return { ...base, objetos: normObj(base.objetos) };
-      });
-      const set = (k, v) => setF(p => ({ ...p, [k]: v }));
-      const toggleExtra = (v) => set("extras", f.extras.includes(v) ? f.extras.filter(x => x !== v) : [...f.extras, v]);
-      const isObjSel = (n) => f.objetos.some(o => o.nombre === n);
-      const toggleObj = (n) => isObjSel(n) ? set("objetos", f.objetos.filter(o => o.nombre !== n)) : set("objetos", [...f.objetos, { nombre: n, cantidad: 1 }]);
-      const adjObj = (n, d) => set("objetos", f.objetos.map(o => o.nombre !== n ? o : { ...o, cantidad: Math.max(1, (o.cantidad || 1) + d) }));
-
-      return (
-        <div style={S.modal} onClick={onClose}>
-          <div style={S.modalBox} onClick={e => e.stopPropagation()}>
-            <div style={S.row({ justifyContent: "space-between", marginBottom: 16 })}>
-              <span style={{ fontSize: 18, fontWeight: 800, color: T.amber, textTransform: "uppercase", fontFamily: "'Barlow Condensed',sans-serif" }}>{initial ? "Editar" : "Nuevo Trabajo"}</span>
-              <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer" }}><Icon d={IC.x} color={T.muted} /></button>
+    <div class="container">
+        <div id="total-container">
+            <div class="resumen-total">
+                <small>Cargando balance...</small>
             </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <label style={S.label}>Cliente</label>
-              <input style={S.input} value={f.cliente} onChange={e => set("cliente", e.target.value)} placeholder="Nombre del cliente" />
-            </div>
-            <div style={{ ...S.g2, marginBottom: 12 }}>
-              <div><label style={S.label}>Teléfono</label><input style={S.input} value={f.telefono} onChange={e => set("telefono", e.target.value)} placeholder="6xx xxx xxx" /></div>
-              <div><label style={S.label}>Fecha</label><input style={S.input} type="date" value={f.fecha} onChange={e => set("fecha", e.target.value)} /></div>
-            </div>
-            <div style={{ ...S.g2, marginBottom: 12 }}>
-              <div><label style={S.label}>Hora inicio</label><input style={S.input} type="time" value={f.hora_inicio} onChange={e => set("hora_inicio", e.target.value)} /></div>
-              <div><label style={S.label}>Hora fin (est.)</label><input style={S.input} type="time" value={f.hora_fin} onChange={e => set("hora_fin", e.target.value)} /></div>
-            </div>
-            <div style={{ ...S.g2, marginBottom: 12 }}>
-              <div><label style={S.label}>CP Salida</label><input style={S.input} value={f.cp_salida} onChange={e => set("cp_salida", e.target.value)} placeholder="24196" /></div>
-              <div><label style={S.label}>CP Llegada</label><input style={S.input} value={f.cp_llegada} onChange={e => set("cp_llegada", e.target.value)} placeholder="24996" /></div>
-            </div>
-            <div style={{ ...S.g2, marginBottom: 12 }}>
-              <div><label style={S.label}>Localidad salida</label><input style={S.input} value={f.localidad_salida} onChange={e => set("localidad_salida", e.target.value)} placeholder="Ciudad origen" /></div>
-              <div><label style={S.label}>Localidad llegada</label><input style={S.input} value={f.localidad_llegada} onChange={e => set("localidad_llegada", e.target.value)} placeholder="Ciudad destino" /></div>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
-              <div><label style={S.label}>Habitaciones</label><input style={S.input} type="number" min="0" value={f.habitaciones} onChange={e => set("habitaciones", e.target.value)} /></div>
-              <div><label style={S.label}>Personas</label><input style={S.input} type="number" min="1" value={f.personas} onChange={e => set("personas", e.target.value)} /></div>
-              <div><label style={S.label}>Precio €</label><input style={S.input} type="number" value={f.precio} onChange={e => set("precio", e.target.value)} placeholder="0" /></div>
-            </div>
-            <div style={{ ...S.g2, marginBottom: 14 }}>
-              <div><label style={S.label}>Estado</label>
-                <select style={{ ...S.input, cursor: "pointer" }} value={f.estado} onChange={e => set("estado", e.target.value)}>
-                  {Object.entries(ESTADOS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                </select>
-              </div>
-              <div><label style={S.label}>Parking</label>
-                <select style={{ ...S.input, cursor: "pointer" }} value={f.parking} onChange={e => set("parking", e.target.value)}>
-                  <option>No</option><option>Sí, disponible</option><option>Sí, problema</option>
-                </select>
-              </div>
-            </div>
-
-            <label style={S.label}>Objetos a transportar</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
-              {OBJETOS_OPTS.map(o => <span key={o} style={S.chip(isObjSel(o))} onClick={() => toggleObj(o)}>{o}</span>)}
-            </div>
-            {f.objetos.length > 0 && (
-              <div style={{ ...S.card({ padding: 10, marginBottom: 14 }) }}>
-                <div style={{ fontSize: 10, color: T.muted, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Cantidades</div>
-                {f.objetos.map(o => (
-                  <div key={o.nombre} style={S.row({ justifyContent: "space-between", marginBottom: 6 })}>
-                    <span style={{ fontSize: 13, flex: 1 }}>{o.nombre}</span>
-                    <div style={S.row({ gap: 0 })}>
-                      <button onClick={() => adjObj(o.nombre, -1)} style={{ background: T.faint, border: `1px solid ${T.border}`, borderRadius: "6px 0 0 6px", color: T.text, width: 30, height: 30, cursor: "pointer", fontSize: 18 }}>−</button>
-                      <div style={{ background: T.faint, border: `1px solid ${T.border}`, borderLeft: "none", borderRight: "none", width: 36, height: 30, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: T.amber }}>{o.cantidad}</div>
-                      <button onClick={() => adjObj(o.nombre, 1)} style={{ background: T.faint, border: `1px solid ${T.border}`, borderRadius: "0 6px 6px 0", color: T.text, width: 30, height: 30, cursor: "pointer", fontSize: 18 }}>+</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {f.objetos.length === 0 && <div style={{ marginBottom: 14 }} />}
-
-            <label style={S.label}>Servicios adicionales</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-              {EXTRAS_OPTS.map(o => <span key={o} style={S.chip(f.extras.includes(o))} onClick={() => toggleExtra(o)}>{o}</span>)}
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <label style={S.label}>Notas</label>
-              <textarea style={{ ...S.input, minHeight: 70, resize: "vertical" }} value={f.notas} onChange={e => set("notas", e.target.value)} placeholder="Observaciones del cliente..." />
-            </div>
-
-            <div style={S.row({ gap: 10 })}>
-              <button style={{ ...S.btn("ghost"), flex: 1 }} onClick={onClose}>Cancelar</button>
-              <button style={{ ...S.btn("primary"), flex: 2 }} onClick={() => onSave({ ...f, id: initial?.id || newId() })}>
-                <Icon d={IC.check} size={16} color="#000" /> Guardar
-              </button>
-            </div>
-          </div>
         </div>
-      );
-    }
 
-    // ════════════════════════════════════════════════════════════════════════════
-    // TAB: AGENDA
-    // ════════════════════════════════════════════════════════════════════════════
-    function MiniJobCard({ t }) {
-      const e = ESTADOS[t.estado] || ESTADOS.pendiente;
-      return (
-        <div style={{ ...S.card({ padding: 12, marginBottom: 8 }), borderLeft: `3px solid ${e.color}` }}>
-          <div style={S.row({ justifyContent: "space-between" })}>
-            <span style={{ fontWeight: 700, fontSize: 15 }}>{t.cliente || "Sin nombre"}</span>
-            <span style={S.badge(e.color)}>{e.label}</span>
-          </div>
-          <div style={{ fontSize: 13, color: T.muted, marginTop: 4 }}>{t.hora_inicio ? `🕐 ${t.hora_inicio}${t.hora_fin?" → "+t.hora_fin:""} · ` : ""}{t.localidad_salida || t.cp_salida} → {t.localidad_llegada || t.cp_llegada}</div>
-          {t.precio && <div style={{ fontSize: 13, color: T.amber, marginTop: 2, fontWeight: 600 }}>{t.precio}€</div>}
-        </div>
-      );
-    }
+        <h2>🚚 Registrar Nuevo Porte</h2>
+        <input type="text" id="cliente" placeholder="Nombre del Cliente">
+        <input type="number" id="precio" placeholder="Precio (€)">
+        <input type="text" id="ruta" placeholder="Origen -> Destino">
+        <button class="btn-main" onclick="guardarPorte()">💾 GUARDAR EN NUBE</button>
 
-    function AgendaTab({ trabajos }) {
-      const now = new Date();
-      const [vd, setVd] = useState({ year: now.getFullYear(), month: now.getMonth() });
-      const [selDay, setSelDay] = useState(null);
-      const { year, month } = vd;
-      const firstDow = (new Date(year, month, 1).getDay() + 6) % 7;
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const ds = (d) => `${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-      const todS = todayStr();
-      const byDate = {};
-      trabajos.forEach(t => { if (!byDate[t.fecha]) byDate[t.fecha] = []; byDate[t.fecha].push(t); });
-      const cells = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
-      const mJobs = trabajos.filter(t => t.fecha?.startsWith(`${year}-${String(month+1).padStart(2,"0")}`));
-      const ingresos = mJobs.filter(t => t.estado === "realizado").reduce((s,t) => s + (parseFloat(t.precio)||0), 0);
+        <h2>📋 Últimos Trabajos</h2>
+        <div id="lista-portes">Conectando...</div>
+    </div>
 
-      return (
-        <div>
-          <div style={S.sec}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, paddingBottom: 12 }}>
-              {[["Pendientes", mJobs.filter(t=>t.estado==="pendiente").length, T.amber],
-                ["Realizados", mJobs.filter(t=>t.estado==="realizado").length, T.green],
-                ["Ingresos", `${ingresos.toFixed(0)}€`, T.blue]
-              ].map(([l,v,c]) => (
-                <div key={l} style={{ ...S.card(), textAlign: "center", padding: 10 }}>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: c, fontFamily: "'Barlow Condensed',sans-serif" }}>{v}</div>
-                  <div style={{ fontSize: 10, color: T.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>{l}</div>
+    <script>
+        // CONFIGURACIÓN (Tus claves verificadas)
+        const SB_URL = "https://hkrbyjxspermnedciqrr.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwMzI1MTMsImV4cCI6MjA1ODYwODUxM30.RlGUguqx-gYQqIyR0W2AwQ_qgRchMDRiM2M5MGYtYjM0Zi00ZDEzLWEyMzYtZDE4YzgyYjA0MzI3";
+        const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+        // FUNCIÓN CARGAR TODO
+        async function actualizarVista() {
+            const { data, error } = await supabaseClient
+                .from('portes')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) { console.error(error); return; }
+
+            // Calcular Total
+            const total = data.reduce((acc, p) => acc + (Number(p.precio) || 0), 0);
+            document.getElementById('total-container').innerHTML = `
+                <div class="resumen-total">
+                    <small>INGRESOS TOTALES</small>
+                    <div>${total}€</div>
                 </div>
-              ))}
-            </div>
+            `;
 
-            <div style={S.card()}>
-              <div style={S.row({ justifyContent: "space-between", marginBottom: 14 })}>
-                <button onClick={() => setVd(v => v.month === 0 ? {year: v.year-1, month: 11} : {year: v.year, month: v.month-1})}
-                  style={{ background: "none", border: "none", cursor: "pointer" }}><Icon d={IC.back} color={T.muted} size={18} /></button>
-                <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 18, fontWeight: 700, textTransform: "uppercase" }}>{MONTHS[month]} {year}</span>
-                <button onClick={() => setVd(v => v.month === 11 ? {year: v.year+1, month: 0} : {year: v.year, month: v.month+1})}
-                  style={{ background: "none", border: "none", cursor: "pointer", transform: "scaleX(-1)" }}><Icon d={IC.back} color={T.muted} size={18} /></button>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2, marginBottom: 4 }}>
-                {DAYS_SHORT.map(d => <div key={d} style={{ textAlign: "center", fontSize: 11, color: T.muted, fontWeight: 700 }}>{d}</div>)}
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3 }}>
-                {cells.map((d, i) => {
-                  if (!d) return <div key={`e${i}`} />;
-                  const dStr = ds(d), jobs = byDate[dStr] || [];
-                  const isToday = dStr === todS, isSel = selDay === d;
-                  return (
-                    <div key={d} onClick={() => setSelDay(isSel ? null : d)}
-                      style={{ position: "relative", textAlign: "center", padding: "6px 2px 10px", borderRadius: 8, cursor: jobs.length ? "pointer" : "default",
-                        background: isSel ? T.amber+"22" : isToday ? T.faint : "transparent",
-                        border: isToday ? `1px solid ${T.amber}44` : isSel ? `1px solid ${T.amber}` : "1px solid transparent" }}>
-                      <span style={{ fontSize: 14, fontWeight: isToday ? 800 : 400, color: isToday ? T.amber : T.text }}>{d}</span>
-                      {(jobs.some(j=>j.estado==="pendiente") || jobs.some(j=>j.estado==="realizado")) && (
-                        <div style={{ position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 2 }}>
-                          {jobs.some(j=>j.estado==="pendiente") && <div style={{ width: 5, height: 5, borderRadius: "50%", background: T.amber }} />}
-                          {jobs.some(j=>j.estado==="realizado") && <div style={{ width: 5, height: 5, borderRadius: "50%", background: T.green }} />}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <div style={{ ...S.row({ marginTop: 10, justifyContent: "center" }), gap: 14 }}>
-                {[[T.amber,"Pendiente"],[T.green,"Realizado"]].map(([c,l]) => (
-                  <div key={l} style={S.row({ gap: 5 })}><div style={{ width: 8, height: 8, borderRadius: "50%", background: c }} /><span style={{ fontSize: 11, color: T.muted }}>{l}</span></div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {selDay && (
-            <div style={{ ...S.sec, paddingBottom: 16 }}>
-              <div style={{ fontSize: 12, color: T.muted, textTransform: "uppercase", letterSpacing: "0.1em", margin: "12px 0 8px" }}>{selDay} de {MONTHS[month]}</div>
-              {(byDate[ds(selDay)] || []).length === 0
-                ? <div style={{ color: T.muted, fontSize: 14, padding: "8px 0" }}>Sin trabajos este día</div>
-                : (byDate[ds(selDay)] || []).map(t => <MiniJobCard key={t.id} t={t} />)}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    // ════════════════════════════════════════════════════════════════════════════
-    // TAB: TRABAJOS
-    // ════════════════════════════════════════════════════════════════════════════
-    function TrabajosTab({ trabajos, setTrabajos }) {
-      const [showForm, setShowForm] = useState(false);
-      const [editItem, setEditItem] = useState(null);
-      const [filter, setFilter] = useState("todos");
-      const [detail, setDetail] = useState(null);
-
-      const saveJob = (job) => {
-        const arr = trabajos.find(t => t.id === job.id) ? trabajos.map(t => t.id === job.id ? job : t) : [job, ...trabajos];
-        setTrabajos(arr); save("trabajos", arr); setShowForm(false); setEditItem(null);
-      };
-      const deleteJob = (id) => { const arr = trabajos.filter(t => t.id !== id); setTrabajos(arr); save("trabajos", arr); setDetail(null); };
-      const nextEstado = (id) => {
-        const ord = ["pendiente","realizado","cancelado"];
-        const arr = trabajos.map(t => t.id !== id ? t : { ...t, estado: ord[(ord.indexOf(t.estado)+1)%ord.length] });
-        setTrabajos(arr); save("trabajos", arr);
-        if (detail?.id === id) setDetail(arr.find(t => t.id === id));
-      };
-
-      const sorted = [...(filter === "todos" ? trabajos : trabajos.filter(t => t.estado === filter))].sort((a,b) => b.fecha?.localeCompare(a.fecha));
-
-      if (detail) {
-        const t = detail, e = ESTADOS[t.estado] || ESTADOS.pendiente;
-        return (
-          <div style={{ padding: "16px 16px 20px" }}>
-            <button style={S.row({ background: "none", border: "none", cursor: "pointer", color: T.muted, fontSize: 13, gap: 6, padding: 0, marginBottom: 16 })} onClick={() => setDetail(null)}>
-              <Icon d={IC.back} size={16} color={T.muted} /> Volver
-            </button>
-            <div style={S.row({ justifyContent: "space-between", marginBottom: 4 })}>
-              <span style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Barlow Condensed',sans-serif", textTransform: "uppercase" }}>{t.cliente || "Sin nombre"}</span>
-              <span style={S.badge(e.color)}>{e.label}</span>
-            </div>
-            <div style={{ fontSize: 13, color: T.muted, marginBottom: 14 }}>{fmt(t.fecha)}</div>
-            {[["Teléfono",t.telefono,IC.phone],["Origen",`${t.localidad_salida||""} ${t.cp_salida?`(${t.cp_salida})`:""}`.trim(),IC.arrow],["Destino",`${t.localidad_llegada||""} ${t.cp_llegada?`(${t.cp_llegada})`:""}`.trim(),IC.arrow],["Horario",(t.hora_inicio||t.hora_fin) ? `${t.hora_inicio||"–"} → ${t.hora_fin||"–"}` : "",IC.clock],["Habitaciones",t.habitaciones,IC.box],["Personas",t.personas+" operarios",IC.users],["Precio",t.precio?t.precio+"€":"–",IC.money],["Parking",t.parking,IC.truck]].map(([k,v,ic]) => v ? (
-              <div key={k} style={S.row({ marginBottom: 10, gap: 10 })}>
-                <Icon d={ic} size={15} color={T.amberDim} style={{ flexShrink: 0 }} />
-                <span style={{ fontSize: 13, color: T.muted, minWidth: 90 }}>{k}</span>
-                <span style={{ fontSize: 14, fontWeight: 600 }}>{v}</span>
-              </div>
-            ) : null)}
-            {t.objetos?.length > 0 && (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ ...S.label, marginBottom: 6 }}>Objetos</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                  {t.objetos.map(o => {
-                    const nombre = typeof o === "string" ? o : o.nombre;
-                    const cantidad = typeof o === "string" ? 1 : o.cantidad;
-                    return (
-                      <span key={nombre} style={{ ...S.chip(false), display: "inline-flex", alignItems: "center", gap: 5 }}>
-                        {nombre}
-                        {cantidad > 1 && <span style={{ background: T.amber, color: "#000", borderRadius: 10, padding: "1px 6px", fontSize: 11, fontWeight: 800 }}>×{cantidad}</span>}
-                      </span>
-                    );
-                  })}
+            // Dibujar Lista
+            document.getElementById('lista-portes').innerHTML = data.map(p => `
+                <div class="porte-card">
+                    <div class="precio-tag">${p.precio}€</div>
+                    <div style="font-weight:bold; color:#3b82f6">${p.cliente}</div>
+                    <div style="font-size:0.85rem; color:#aaa; margin-top:5px;">📍 ${p.ruta || 'Ruta no especificada'}</div>
                 </div>
-              </div>
-            )}
-            {t.extras?.length > 0 && (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ ...S.label, marginBottom: 6 }}>Servicios extra</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                  {t.extras.map(o => <span key={o} style={S.chip(true)}>{o}</span>)}
-                </div>
-              </div>
-            )}
-            {t.notas && <div style={{ ...S.card({ marginTop: 14 }), borderLeft: `2px solid ${T.border}` }}><div style={S.label}>Notas</div><div style={{ fontSize: 14 }}>{t.notas}</div></div>}
-            <div style={S.row({ gap: 8, marginTop: 20 })}>
-              <button style={{ ...S.btn("ghost"), flex: 1 }} onClick={() => { setEditItem(t); setDetail(null); setShowForm(true); }}><Icon d={IC.edit} size={14} color={T.muted} /> Editar</button>
-              <button style={{ ...S.btn("success"), flex: 1 }} onClick={() => nextEstado(t.id)}><Icon d={IC.clock} size={14} color="#000" /> Estado</button>
-              <button style={S.btn("danger")} onClick={() => deleteJob(t.id)}><Icon d={IC.trash} size={14} color="#fff" /></button>
-            </div>
-          </div>
-        );
-      }
-
-      return (
-        <div>
-          <div style={{ ...S.sec, paddingBottom: 10 }}>
-            <div style={S.row({ gap: 6, overflowX: "auto", paddingBottom: 4 })}>
-              {[["todos","Todos"],["pendiente","Pendientes"],["realizado","Realizados"],["cancelado","Cancelados"]].map(([k,l]) => (
-                <span key={k} style={{ ...S.chip(filter===k), flexShrink: 0 }} onClick={() => setFilter(k)}>{l}</span>
-              ))}
-            </div>
-          </div>
-          {sorted.length === 0 ? (
-            <div style={{ textAlign: "center", color: T.muted, padding: 40 }}>
-              <Icon d={IC.truck} size={36} color={T.border} />
-              <div style={{ marginTop: 12, fontSize: 14 }}>No hay trabajos</div>
-            </div>
-          ) : (
-            <div style={{ padding: "0 16px 16px" }}>
-              {sorted.map(t => {
-                const e = ESTADOS[t.estado] || ESTADOS.pendiente;
-                return (
-                  <div key={t.id} style={{ ...S.card({ padding: 14, marginBottom: 10, cursor: "pointer", borderLeft: `3px solid ${e.color}` }) }} onClick={() => setDetail(t)}>
-                    <div style={S.row({ justifyContent: "space-between" })}>
-                      <span style={{ fontWeight: 700, fontSize: 16 }}>{t.cliente || "Sin nombre"}</span>
-                      <span style={S.badge(e.color)}>{e.label}</span>
-                    </div>
-                    <div style={{ fontSize: 12, color: T.muted, marginTop: 4 }}>{fmt(t.fecha)}{t.hora_inicio ? ` · ${t.hora_inicio}${t.hora_fin ? " → "+t.hora_fin : ""}` : ""}{(t.localidad_salida||t.cp_salida) ? ` · ${t.localidad_salida||t.cp_salida} → ${t.localidad_llegada||t.cp_llegada}` : ""}</div>
-                    <div style={S.row({ marginTop: 6, gap: 10 })}>
-                      {t.personas && <span style={{ fontSize: 12, color: T.muted }}>{t.personas} pers.</span>}
-                      {t.habitaciones && <span style={{ fontSize: 12, color: T.muted }}>{t.habitaciones} hab.</span>}
-                      {t.precio && <span style={{ fontSize: 13, fontWeight: 700, color: T.amber }}>{t.precio}€</span>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          <button style={S.fab} onClick={() => { setEditItem(null); setShowForm(true); }}>
-            <Icon d={IC.plus} size={24} color="#000" />
-          </button>
-          {showForm && <TrabajoForm initial={editItem} onSave={saveJob} onClose={() => { setShowForm(false); setEditItem(null); }} />}
-        </div>
-      );
-    }
-
-    // ════════════════════════════════════════════════════════════════════════════
-    // TAB: VEHÍCULO
-    // ════════════════════════════════════════════════════════════════════════════
-    function GastoForm({ onSave, onClose }) {
-      const [fecha, setFecha] = useState(todayStr());
-      const [km, setKm] = useState("");
-      const [notas, setNotas] = useState("");
-      const [importes, setImportes] = useState(Object.fromEntries(GASTO_TIPOS.map(t => [t, ""])));
-      const setI = (tipo, val) => setImportes(p => ({ ...p, [tipo]: val }));
-      const total = GASTO_TIPOS.reduce((s, t) => s + (parseFloat(importes[t]) || 0), 0);
-      const handleSave = () => {
-        const gs = GASTO_TIPOS.filter(t => parseFloat(importes[t]) > 0).map(t => ({ id: newId(), fecha, tipo: t, importe: importes[t], km: t === "Gasolina/Diésel" ? km : "", notas }));
-        if (gs.length) onSave(gs);
-      };
-      return (
-        <div style={S.modal} onClick={onClose}>
-          <div style={S.modalBox} onClick={e => e.stopPropagation()}>
-            <div style={S.row({ justifyContent: "space-between", marginBottom: 16 })}>
-              <span style={{ fontSize: 18, fontWeight: 800, color: T.amber, textTransform: "uppercase", fontFamily: "'Barlow Condensed',sans-serif" }}>Registrar Gastos</span>
-              <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer" }}><Icon d={IC.x} color={T.muted} /></button>
-            </div>
-            <div style={{ ...S.g2, marginBottom: 14 }}>
-              <div><label style={S.label}>Fecha</label><input style={S.input} type="date" value={fecha} onChange={e => setFecha(e.target.value)} /></div>
-              <div><label style={S.label}>KM recorridos</label><input style={S.input} type="number" value={km} onChange={e => setKm(e.target.value)} placeholder="0" /></div>
-            </div>
-            <label style={S.label}>Importes por tipo</label>
-            <div style={{ ...S.card({ padding: 12, marginBottom: 12 }) }}>
-              {GASTO_TIPOS.map((tipo, i) => (
-                <div key={tipo} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: i < GASTO_TIPOS.length-1 ? 10 : 0 }}>
-                  <Icon d={ICONS_GASTO[tipo]} size={15} color={importes[tipo] ? T.amber : T.muted} style={{ flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontSize: 14, color: importes[tipo] ? T.text : T.muted }}>{tipo}</span>
-                  <div style={{ position: "relative", width: 90 }}>
-                    <input style={{ ...S.input, padding: "8px 22px 8px 8px", textAlign: "right", fontSize: 14, width: "100%",
-                      borderColor: importes[tipo] ? T.amber+"88" : T.border, color: importes[tipo] ? T.amber : T.muted }}
-                      type="number" min="0" step="0.01" value={importes[tipo]} onChange={e => setI(tipo, e.target.value)} placeholder="—" />
-                    <span style={{ position: "absolute", right: 7, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: T.muted, pointerEvents: "none" }}>€</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {total > 0 && (
-              <div style={{ ...S.row({ justifyContent: "space-between" }), background: T.faint, borderRadius: 8, padding: "10px 14px", marginBottom: 12 }}>
-                <span style={{ fontSize: 13, color: T.muted, textTransform: "uppercase" }}>Total</span>
-                <span style={{ fontSize: 18, fontWeight: 800, color: T.red, fontFamily: "'Barlow Condensed',sans-serif" }}>{total.toFixed(2)}€</span>
-              </div>
-            )}
-            <div style={{ marginBottom: 16 }}>
-              <label style={S.label}>Notas</label>
-              <input style={S.input} value={notas} onChange={e => setNotas(e.target.value)} placeholder="Descripción general..." />
-            </div>
-            <div style={S.row({ gap: 10 })}>
-              <button style={{ ...S.btn("ghost"), flex: 1 }} onClick={onClose}>Cancelar</button>
-              <button style={{ ...S.btn(total > 0 ? "primary" : "ghost"), flex: 2 }} onClick={handleSave} disabled={total === 0}>
-                <Icon d={IC.check} size={16} color={total > 0 ? "#000" : T.muted} /> Guardar {total > 0 ? `(${total.toFixed(2)}€)` : ""}
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    function VehiculoTab({ gastos, setGastos }) {
-      const [showForm, setShowForm] = useState(false);
-      const saveGasto = (nuevos) => { const arr = [...nuevos, ...gastos]; setGastos(arr); save("gastos", arr); setShowForm(false); };
-      const delGasto = (id) => { const arr = gastos.filter(g => g.id !== id); setGastos(arr); save("gastos", arr); };
-      const now = new Date();
-      const mesStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
-      const gMes = gastos.filter(g => g.fecha?.startsWith(mesStr));
-      const totalMes = gMes.reduce((s,g) => s + (parseFloat(g.importe)||0), 0);
-      const totalKm = gMes.filter(g=>g.km).reduce((s,g) => s + (parseFloat(g.km)||0), 0);
-      const porTipo = Object.fromEntries(GASTO_TIPOS.map(t => [t, gMes.filter(g=>g.tipo===t).reduce((s,g) => s+(parseFloat(g.importe)||0),0)]));
-      const sorted = [...gastos].sort((a,b) => b.fecha?.localeCompare(a.fecha));
-
-      return (
-        <div>
-          <div style={S.sec}>
-            <div style={{ ...S.card({ padding: 14, marginBottom: 12 }) }}>
-              <div style={{ fontSize: 11, color: T.muted, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Este mes — {MONTHS[now.getMonth()]}</div>
-              <div style={S.row({ justifyContent: "space-between" })}>
-                <div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: T.red, fontFamily: "'Barlow Condensed',sans-serif" }}>{totalMes.toFixed(2)}€</div>
-                  <div style={{ fontSize: 12, color: T.muted }}>Total gastos</div>
-                </div>
-                {totalKm > 0 && (
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: T.blue, fontFamily: "'Barlow Condensed',sans-serif" }}>{totalKm} km</div>
-                    <div style={{ fontSize: 12, color: T.muted }}>Kilómetros</div>
-                  </div>
-                )}
-              </div>
-            </div>
-            {Object.entries(porTipo).filter(([,v])=>v>0).map(([k,v]) => (
-              <div key={k} style={S.row({ justifyContent: "space-between", marginBottom: 6, padding: "6px 0", borderBottom: `1px solid ${T.border}` })}>
-                <span style={{ fontSize: 14 }}>{k}</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: T.red }}>{v.toFixed(2)}€</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ padding: "12px 16px 16px" }}>
-            <div style={{ fontSize: 11, color: T.muted, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Historial</div>
-            {sorted.length === 0
-              ? <div style={{ color: T.muted, textAlign: "center", padding: 30, fontSize: 14 }}>Sin gastos registrados</div>
-              : sorted.map(g => (
-                <div key={g.id} style={{ ...S.card({ padding: 12, marginBottom: 8 }) }}>
-                  <div style={S.row({ justifyContent: "space-between" })}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 15 }}>{g.tipo}</div>
-                      <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>{fmt(g.fecha)}{g.km?` · ${g.km} km`:""}{g.notas?` · ${g.notas}`:""}</div>
-                    </div>
-                    <div style={S.row({ gap: 8 })}>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: T.red }}>{parseFloat(g.importe||0).toFixed(2)}€</span>
-                      <button style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }} onClick={() => delGasto(g.id)}><Icon d={IC.trash} size={14} color={T.muted} /></button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-          </div>
-          <button style={S.fab} onClick={() => setShowForm(true)}><Icon d={IC.plus} size={24} color="#000" /></button>
-          {showForm && <GastoForm onSave={saveGasto} onClose={() => setShowForm(false)} />}
-        </div>
-      );
-    }
-
-    // ════════════════════════════════════════════════════════════════════════════
-    // TAB: RESUMEN
-    // ════════════════════════════════════════════════════════════════════════════
-    function ResumenTab({ trabajos, gastos, onExport, onImportClick, fileRef }) {
-      const now = new Date();
-      const mes = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
-      const tMes = trabajos.filter(t => t.fecha?.startsWith(mes));
-      const gMes = gastos.filter(g => g.fecha?.startsWith(mes));
-      const ingresos = tMes.filter(t=>t.estado==="realizado").reduce((s,t)=>s+(parseFloat(t.precio)||0),0);
-      const gastosT = gMes.reduce((s,g)=>s+(parseFloat(g.importe)||0),0);
-      const neto = ingresos - gastosT;
-      const proximos = trabajos.filter(t => {
-        if (t.estado !== "pendiente") return false;
-        const d = new Date(t.fecha), hoy = new Date(), en7 = new Date(); en7.setDate(hoy.getDate()+7);
-        return d >= hoy && d <= en7;
-      }).sort((a,b)=>a.fecha.localeCompare(b.fecha));
-      const gastoPorTipo = {};
-      gastos.forEach(g => { gastoPorTipo[g.tipo] = (gastoPorTipo[g.tipo]||0)+(parseFloat(g.importe)||0); });
-
-      return (
-        <div style={{ padding: "16px 16px 20px" }}>
-          <div style={{ fontSize: 13, color: T.amber, textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700, marginBottom: 12 }}>
-            {MONTHS[now.getMonth()]} {now.getFullYear()}
-          </div>
-
-          <div style={{ ...S.card({ padding: 16, marginBottom: 12, borderColor: neto >= 0 ? T.green+"44" : T.red+"44" }) }}>
-            <div style={{ fontSize: 11, color: T.muted, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Balance del mes</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-              {[["Ingresos",`${ingresos.toFixed(0)}€`,T.green],["Gastos",`${gastosT.toFixed(0)}€`,T.red],["Neto",`${neto.toFixed(0)}€`,neto>=0?T.green:T.red]].map(([l,v,c]) => (
-                <div key={l} style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: c, fontFamily: "'Barlow Condensed',sans-serif" }}>{v}</div>
-                  <div style={{ fontSize: 10, color: T.muted, textTransform: "uppercase" }}>{l}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {proximos.length > 0 && (
-            <>
-              <div style={{ fontSize: 11, color: T.muted, textTransform: "uppercase", letterSpacing: "0.1em", margin: "14px 0 8px" }}>Próximos 7 días ({proximos.length})</div>
-              {proximos.map(t => <MiniJobCard key={t.id} t={t} />)}
-            </>
-          )}
-
-          {Object.keys(gastoPorTipo).length > 0 && (
-            <>
-              <div style={{ fontSize: 11, color: T.muted, textTransform: "uppercase", letterSpacing: "0.1em", margin: "14px 0 8px" }}>Gastos vehículo (histórico)</div>
-              <div style={S.card()}>
-                {Object.entries(gastoPorTipo).sort((a,b)=>b[1]-a[1]).map(([k,v]) => (
-                  <div key={k} style={S.row({ justifyContent: "space-between", padding: "7px 0", borderBottom: `1px solid ${T.border}` })}>
-                    <span style={{ fontSize: 13 }}>{k}</span>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: T.red }}>{v.toFixed(2)}€</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* ── TRANSFERENCIA DE DATOS ─────────────────────────────────────── */}
-          <div style={{ marginTop: 24, borderTop: `1px solid ${T.border}`, paddingTop: 20 }}>
-            <div style={{ fontSize: 11, color: T.muted, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Transferir datos entre móviles</div>
-            <div style={{ fontSize: 13, color: T.muted, marginBottom: 14, lineHeight: 1.6 }}>
-              Exporta los datos de este móvil a un archivo JSON y luego impórtalo en el otro móvil.
-            </div>
-            <div style={S.row({ gap: 10 })}>
-              <button style={{ ...S.btn("primary"), flex: 1 }} onClick={onExport}>
-                <Icon d={IC.download} size={15} color="#000" /> Exportar datos
-              </button>
-              <button style={{ ...S.btn("ghost"), flex: 1 }} onClick={onImportClick}>
-                <Icon d={IC.upload} size={15} color={T.muted} /> Importar datos
-              </button>
-            </div>
-            <input ref={fileRef} type="file" accept=".json" style={{ display: "none" }} />
-          </div>
-        </div>
-      );
-    }
-
-    // ════════════════════════════════════════════════════════════════════════════
-    // APP ROOT
-    // ════════════════════════════════════════════════════════════════════════════
-    function App() {
-      const [tab, setTab] = useState("agenda");
-      const [trabajos, setTrabajos] = useState(() => load("trabajos", []));
-      const [gastos, setGastos] = useState(() => load("gastos", []));
-      const fileRef = useRef(null);
-
-      const handleExport = () => {
-        const data = { version: 1, exportDate: new Date().toISOString(), trabajos, gastos };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = `portes_backup_${todayStr()}.json`; a.click();
-        URL.revokeObjectURL(url);
-      };
-
-      const handleImportClick = () => {
-        if (fileRef.current) {
-          fileRef.current.onchange = (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-              try {
-                const data = JSON.parse(ev.target.result);
-                if (data.trabajos) { setTrabajos(data.trabajos); save("trabajos", data.trabajos); }
-                if (data.gastos) { setGastos(data.gastos); save("gastos", data.gastos); }
-                alert(`✅ Importados: ${(data.trabajos||[]).length} trabajos, ${(data.gastos||[]).length} gastos`);
-              } catch { alert("❌ Archivo no válido"); }
-            };
-            reader.readAsText(file);
-            e.target.value = "";
-          };
-          fileRef.current.click();
+            `).join('');
         }
-      };
 
-      const TABS = [
-        { id: "agenda",   label: "Agenda",   icon: IC.calendar },
-        { id: "trabajos", label: "Trabajos", icon: IC.truck },
-        { id: "vehiculo", label: "Vehículo", icon: IC.fuel },
-        { id: "resumen",  label: "Resumen",  icon: IC.chart },
-      ];
+        // FUNCIÓN GUARDAR
+        async function guardarPorte() {
+            const cli = document.getElementById('cliente').value;
+            const pre = document.getElementById('precio').value;
+            const rut = document.getElementById('ruta').value;
 
-      return (
-        <div style={S.app}>
-          <div style={S.header}>
-            <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase", fontFamily: "'Barlow Condensed',sans-serif", lineHeight: 1 }}>
-              <span style={{ color: T.amber }}>PORTES</span>
-              <span style={{ color: T.muted, fontWeight: 400, margin: "0 6px" }}>&amp;</span>
-              <span style={{ color: T.text }}>MUDANZAS</span>
-            </div>
-            <div style={{ fontSize: 11, color: T.muted, letterSpacing: "0.15em", textTransform: "uppercase", marginTop: 2 }}>Gestión de trabajos</div>
-          </div>
+            if(!cli || !pre) { alert("Pon al menos nombre y precio"); return; }
 
-          {tab === "agenda"   && <AgendaTab trabajos={trabajos} />}
-          {tab === "trabajos" && <TrabajosTab trabajos={trabajos} setTrabajos={setTrabajos} />}
-          {tab === "vehiculo" && <VehiculoTab gastos={gastos} setGastos={setGastos} />}
-          {tab === "resumen"  && <ResumenTab trabajos={trabajos} gastos={gastos} onExport={handleExport} onImportClick={handleImportClick} fileRef={fileRef} />}
+            const { error } = await supabaseClient
+                .from('portes')
+                .insert([{ cliente: cli, precio: parseInt(pre), ruta: rut }]);
 
-          <nav style={S.nav}>
-            {TABS.map(({ id, label, icon }) => (
-              <button key={id} style={S.navBtn(tab === id)} onClick={() => setTab(id)}>
-                <Icon d={icon} size={20} color={tab === id ? T.amber : T.muted} />
-                <span>{label}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
-      );
-    }
+            if (error) alert("Error al guardar");
+            else {
+                alert("¡Porte guardado!");
+                document.getElementById('cliente').value = "";
+                document.getElementById('precio').value = "";
+                document.getElementById('ruta').value = "";
+                actualizarVista();
+            }
+        }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-  </script>
+        actualizarVista();
+    </script>
 </body>
 </html>
