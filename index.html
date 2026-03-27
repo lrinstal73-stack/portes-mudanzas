@@ -39,7 +39,9 @@
 
 <script>
     const SB_URL = "https://hkrbyjxspermnedciqrr.supabase.co";
-    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzE2OSwiZXhwIjoyMDU4NjUzMTY5fQ.mHnZSi6ImFubzcyIn0ImFubzcy";
+    // Clave corregida sin caracteres extraños al final
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzE2OSwiZXhwIjoyMDU4NjUzMTY5fQ.mHnZSi6ImFubzcy";
+    
     const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
     async function cargarDatos() {
@@ -72,6 +74,7 @@
         if (error) {
             alert("Error al guardar: " + error.message);
         } else {
+            alert("¡Porte guardado con éxito!");
             document.getElementById('cliente').value = "";
             document.getElementById('precio').value = "";
             document.getElementById('ruta').value = "";
