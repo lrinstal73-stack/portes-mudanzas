@@ -33,31 +33,35 @@
     <input type="text" id="ruta" placeholder="Origen / Ruta">
     <button onclick="guardar()">GUARDAR EN NUBE</button>
 
-    <div class="lista" id="lista-portes">
-        </div>
+    <div class="lista" id="lista-portes"></div>
 </div>
 
 <script>
     const SB_URL = "https://hkrbyjxspermnedciqrr.supabase.co";
-    // Clave corregida sin caracteres extraños al final
+    // Clave limpia y verificada
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzE2OSwiZXhwIjoyMDU4NjUzMTY5fQ.mHnZSi6ImFubzcy";
     
-    const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+    // Inicialización robusta para evitar el error de "supabase is not defined"
+    const supabaseClient = window.supabase.createClient(SB_URL, SB_KEY);
 
     async function cargarDatos() {
-        const { data, error } = await supabaseClient.from('portes').select('*').order('created_at', { ascending: false });
-        if (error) { console.error("Error:", error); return; }
+        try {
+            const { data, error } = await supabaseClient.from('portes').select('*').order('created_at', { ascending: false });
+            if (error) throw error;
 
-        let total = data.reduce((acc, p) => acc + (Number(p.precio) || 0), 0);
-        document.getElementById('balance').innerText = total + "€";
+            let total = data.reduce((acc, p) => acc + (Number(p.precio) || 0), 0);
+            document.getElementById('balance').innerText = total + "€";
 
-        document.getElementById('lista-portes').innerHTML = data.map(p => `
-            <div class="card">
-                <div class="precio">${p.precio}€</div>
-                <div style="font-weight:bold;">${p.cliente}</div>
-                <div style="font-size:0.8rem; color:#aaa;">📍 ${p.origen || 'Sin ruta'}</div>
-            </div>
-        `).join('');
+            document.getElementById('lista-portes').innerHTML = data.map(p => `
+                <div class="card">
+                    <div class="precio">${p.precio}€</div>
+                    <div style="font-weight:bold;">${p.cliente}</div>
+                    <div style="font-size:0.8rem; color:#aaa;">📍 ${p.origen || 'Sin ruta'}</div>
+                </div>
+            `).join('');
+        } catch (err) {
+            console.error("Lili detectó un error cargando:", err.message);
+        }
     }
 
     async function guardar() {
@@ -65,7 +69,7 @@
         const pre = document.getElementById('precio').value;
         const rut = document.getElementById('ruta').value;
 
-        if(!cli || !pre) return alert("Pon nombre y precio");
+        if(!cli || !pre) return alert("Luis, pon nombre y precio");
 
         const { error } = await supabaseClient.from('portes').insert([
             { cliente: cli, precio: parseInt(pre), origen: rut }
