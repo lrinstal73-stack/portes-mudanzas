@@ -3,105 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema Logística | Luis</title>
+    <title>Logística Luis | Control de Portes</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --primary: #3b82f6; --success: #10b981; --dark: #0f1014; --card: #1c1d24; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: white; margin: 0; padding: 20px; }
-        .container { max-width: 600px; margin: auto; }
-        
-        /* Resumen Dinero */
-        .resumen-total { background: var(--success); padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 25px; border: 1px solid #059669; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2); }
-        .resumen-total small { text-transform: uppercase; letter-spacing: 1px; opacity: 0.9; }
-        .resumen-total div { font-size: 2.5rem; font-weight: bold; }
-
-        /* Tarjetas de Historial */
-        .porte-card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 12px; border-left: 5px solid var(--primary); position: relative; }
-        .precio-tag { position: absolute; top: 15px; right: 15px; color: var(--success); font-weight: bold; font-size: 1.2rem; }
-        
-        /* Botones y Formulario */
-        button { width: 100%; padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        .btn-main { background: var(--primary); color: white; }
-        input { width: 100%; padding: 10px; margin: 8px 0; border-radius: 6px; border: 1px solid #333; background: #25262e; color: white; box-sizing: border-box; }
-        
-        h2 { border-bottom: 1px solid #333; padding-bottom: 10px; margin-top: 30px; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: white; padding: 20px; margin: 0; }
+        .container { max-width: 500px; margin: auto; }
+        .resumen { background: var(--success); padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; }
+        .resumen small { text-transform: uppercase; opacity: 0.8; font-size: 0.7rem; }
+        .resumen div { font-size: 2.5rem; font-weight: bold; }
+        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; font-size: 1rem; box-sizing: border-box; }
+        input { background: #25262e; color: white; border: 1px solid #333; }
+        button { background: var(--primary); color: white; font-weight: bold; cursor: pointer; }
+        .lista { margin-top: 30px; }
+        .card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 10px; position: relative; border-left: 5px solid var(--primary); }
+        .precio { position: absolute; top: 15px; right: 15px; color: var(--success); font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div id="total-container">
-            <div class="resumen-total">
-                <small>Cargando balance...</small>
-            </div>
-        </div>
 
-        <h2>🚚 Registrar Nuevo Porte</h2>
-        <input type="text" id="cliente" placeholder="Nombre del Cliente">
-        <input type="number" id="precio" placeholder="Precio (€)">
-        <input type="text" id="ruta" placeholder="Origen -> Destino">
-        <button class="btn-main" onclick="guardarPorte()">💾 GUARDAR EN NUBE</button>
-
-        <h2>📋 Últimos Trabajos</h2>
-        <div id="lista-portes">Conectando...</div>
+<div class="container">
+    <div class="resumen">
+        <small>INGRESOS TOTALES</small>
+        <div id="balance">0€</div>
     </div>
 
-    <script>
-        // CONFIGURACIÓN (Tus claves verificadas)
-        const SB_URL = "https://hkrbyjxspermnedciqrr.supabase.co";
-        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwMzI1MTMsImV4cCI6MjA1ODYwODUxM30.RlGUguqx-gYQqIyR0W2AwQ_qgRchMDRiM2M5MGYtYjM0Zi00ZDEzLWEyMzYtZDE4YzgyYjA0MzI3";
-        const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+    <input type="text" id="cliente" placeholder="Nombre del cliente">
+    <input type="number" id="precio" placeholder="Precio (€)">
+    <input type="text" id="ruta" placeholder="Origen / Ruta">
+    <button onclick="guardar()">GUARDAR EN NUBE</button>
 
-        // FUNCIÓN CARGAR TODO
-        async function actualizarVista() {
-            const { data, error } = await supabaseClient
-                .from('portes')
-                .select('*')
-                .order('created_at', { ascending: false });
+    <div class="lista" id="lista-portes">
+        </div>
+</div>
 
-            if (error) { console.error(error); return; }
+<script>
+    // CONFIGURACIÓN (Tus credenciales)
+    const SB_URL = "https://hkrbyjxspermnedciqrr.supabase.co";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzE2OSwiZXhwIjoyMDU4NjUzMTY5fQ.mHnZSi6ImFubzcyIn0ImFubzcy";
+    const supabase = supabase.createClient(SB_URL, SB_KEY);
 
-            // Calcular Total
-            const total = data.reduce((acc, p) => acc + (Number(p.precio) || 0), 0);
-            document.getElementById('total-container').innerHTML = `
-                <div class="resumen-total">
-                    <small>INGRESOS TOTALES</small>
-                    <div>${total}€</div>
-                </div>
-            `;
+    async function cargarDatos() {
+        const { data, error } = await supabase.from('portes').select('*').order('created_at', { ascending: false });
+        if (error) { console.error(error); return; }
 
-            // Dibujar Lista
-            document.getElementById('lista-portes').innerHTML = data.map(p => `
-                <div class="porte-card">
-                    <div class="precio-tag">${p.precio}€</div>
-                    <div style="font-weight:bold; color:#3b82f6">${p.cliente}</div>
-                    <div style="font-size:0.85rem; color:#aaa; margin-top:5px;">📍 ${p.origen || 'Ruta no especificada'}</div>
-                </div>
-            `).join('');
+        let total = data.reduce((acc, p) => acc + (Number(p.precio) || 0), 0);
+        document.getElementById('balance').innerText = total + "€";
+
+        document.getElementById('lista-portes').innerHTML = data.map(p => `
+            <div class="card">
+                <div class="precio">${p.precio}€</div>
+                <div style="font-weight:bold;">${p.cliente}</div>
+                <div style="font-size:0.8rem; color:#aaa;">📍 ${p.origen || 'Sin ruta'}</div>
+            </div>
+        `).join('');
+    }
+
+    async function guardar() {
+        const cli = document.getElementById('cliente').value;
+        const pre = document.getElementById('precio').value;
+        const rut = document.getElementById('ruta').value;
+
+        if(!cli || !pre) return alert("Faltan datos");
+
+        const { error } = await supabase.from('portes').insert([{ 
+            cliente: cli, 
+            precio: parseInt(pre), 
+            origen: rut 
+        }]);
+
+        if (error) {
+            alert("Error: " + error.message);
+        } else {
+            document.getElementById('cliente').value = "";
+            document.getElementById('precio').value = "";
+            document.getElementById('ruta').value = "";
+            cargarDatos();
         }
+    }
 
-        // FUNCIÓN GUARDAR
-        async function guardarPorte() {
-            const cli = document.getElementById('cliente').value;
-            const pre = document.getElementById('precio').value;
-            const rut = document.getElementById('ruta').value;
-
-            if(!cli || !pre) { alert("Pon al menos nombre y precio"); return; }
-
-            const { error } = await supabaseClient
-                .from('portes')
-                .insert([{ cliente: cli, precio: parseInt(pre), origen: rut }]);
-
-            if (error) alert("Error al guardar");
-            else {
-                alert("¡Porte guardado!");
-                document.getElementById('cliente').value = "";
-                document.getElementById('precio').value = "";
-                document.getElementById('ruta').value = "";
-                actualizarVista();
-            }
-        }
-
-        actualizarVista();
-    </script>
+    cargarDatos();
+</script>
 </body>
 </html>
