@@ -2,66 +2,117 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Logistica Luis</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; text-align: center; }
-        .card { background: #10b981; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
-        input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: white; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .item { background: #1e293b; padding: 15px; margin-top: 10px; border-radius: 8px; text-align: left; display: flex; justify-content: space-between; }
+        body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; text-align: center; margin: 0; }
+        .container { max-width: 400px; margin: auto; }
+        h2 { color: #3b82f6; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+        .card { background: #10b981; padding: 25px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2); }
+        .amount { font-size: 36px; font-weight: bold; display: block; }
+        .form-box { background: #1e293b; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        input { width: 100%; padding: 16px; margin: 10px 0; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 18px; background: #3b82f6; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 16px; text-transform: uppercase; }
+        button:active { transform: scale(0.96); background: #2563eb; }
+        button:disabled { background: #475569; cursor: not-allowed; }
+        .item { background: #1e293b; padding: 18px; margin-top: 12px; border-radius: 12px; text-align: left; border-left: 6px solid #3b82f6; display: flex; justify-content: space-between; align-items: center; }
+        .item span { font-weight: 500; font-size: 17px; }
+        .item b { color: #10b981; font-size: 20px; }
     </style>
 </head>
 <body>
-    <div style="max-width:400px; margin:auto;">
-        <h2>LOGÍSTICA LUIS</h2>
+    <div class="container">
+        <h2>Logística Luis</h2>
+        
         <div class="card">
-            <div style="font-size:12px;">TOTAL ACUMULADO</div>
-            <div id="bal" style="font-size:28px; font-weight:bold;">Conectando...</div>
+            <span style="font-size: 12px; opacity: 0.9; font-weight: bold;">TOTAL ACUMULADO</span>
+            <span id="bal" class="amount">...</span>
         </div>
-        <input type="text" id="cli" placeholder="Cliente">
-        <input type="number" id="pre" placeholder="Precio (€)">
-        <button id="btnG">AÑADIR PORTE</button>
-        <div id="lst" style="margin-top:20px;"></div>
+
+        <div class="form-box">
+            <input type="text" id="cli" placeholder="Nombre del Cliente" autocomplete="off">
+            <input type="number" id="pre" placeholder="Precio del Porte (€)" inputmode="decimal" step="any">
+            <button id="btnG">Guardar Porte</button>
+        </div>
+
+        <div id="lst" style="margin-top:25px; padding-bottom: 40px;"></div>
     </div>
 
 <script>
     const U = "https://hkrbyjxspermnedciqrr.supabase.co";
     const K = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
+    
     const sb = supabase.createClient(U, K);
 
     async function cargar() {
-        const { data, error } = await sb.from('portes').select('*').order('created_at', { ascending: false });
-        if (error) { document.getElementById('bal').innerText = "Error"; return; }
-        let total = 0;
-        let html = "";
-        if (data && data.length > 0) {
-            data.forEach(d => {
-                total += Number(d.precio || 0);
-                html += "<div class='item'><span>"+d.cliente+"</span><b>"+d.precio+"€</b></div>";
-            });
-            document.getElementById('bal').innerText = total + "€";
-        } else {
-            document.getElementById('bal').innerText = "0€";
+        try {
+            const { data, error } = await sb.from('portes').select('*').order('created_at', { ascending: false });
+            
+            if (error) throw error;
+
+            let total = 0;
+            let html = "";
+            
+            if (data && data.length > 0) {
+                data.forEach(d => {
+                    const p = parseFloat(d.precio) || 0;
+                    total += p;
+                    html += "<div class='item'><span>" + (d.cliente || 'Desconocido') + "</span><b>" + p.toFixed(2) + "€</b></div>";
+                });
+                document.getElementById('bal').innerText = total.toFixed(2) + "€";
+            } else {
+                document.getElementById('bal').innerText = "0.00€";
+                html = "<p style='color:#64748b; margin-top: 20px;'>No hay registros.</p>";
+            }
+            document.getElementById('lst').innerHTML = html;
+        } catch (err) {
+            console.error(err);
+            document.getElementById('bal').innerText = "Error";
         }
-        document.getElementById('lst').innerHTML = html;
     }
 
     async function guardar() {
-        const c = document.getElementById('cli').value;
-        const p = document.getElementById('pre').value;
-        if (!c || !p) return;
-        const { error } = await sb.from('portes').insert([{ cliente: c, precio: parseInt(p) }]);
-        if (!error) { 
-            document.getElementById('cli').value = ""; 
-            document.getElementById('pre').value = ""; 
-            cargar(); 
+        const cInput = document.getElementById('cli');
+        const pInput = document.getElementById('pre');
+        const btn = document.getElementById('btnG');
+
+        if (!cInput.value || !pInput.value) {
+            alert("Completa Cliente y Precio");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerText = "Conectando...";
+
+        const precioValue = parseFloat(pInput.value);
+
+        try {
+            const { data, error } = await sb
+                .from('portes')
+                .insert([{ cliente: cInput.value, precio: precioValue }])
+                .select();
+
+            if (error) {
+                // Si hay un error, lo mostramos explícitamente para diagnosticar
+                alert("Error de Supabase: " + error.message + "\nCódigo: " + error.code);
+                console.error(error);
+            } else {
+                cInput.value = "";
+                pInput.value = "";
+                await cargar();
+            }
+        } catch (err) {
+            alert("Error crítico: " + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "Guardar Porte";
         }
     }
 
     document.getElementById('btnG').onclick = guardar;
-    cargar();
+    // Carga inicial
+    window.onload = cargar;
 </script>
 </body>
 </html>
