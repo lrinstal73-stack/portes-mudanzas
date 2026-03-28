@@ -15,7 +15,7 @@
 <body>
     <div class="con">
         <h2>Logística Luis</h2>
-        <div id="bal" style="background:#10b981; padding:15px; border-radius:10px; margin-bottom:10px;">Conectando...</div>
+        <div id="bal" style="background:#10b981; padding:15px; border-radius:10px; margin-bottom:10px;">Cargando...</div>
         <input type="text" id="cli" placeholder="Cliente">
         <input type="number" id="pre" placeholder="Precio">
         <button id="btnG">GUARDAR DATOS</button>
@@ -23,9 +23,7 @@
     </div>
 <script>
     const U = "https://hkrbyjxspermnedciqrr.supabase.co";
-    // ESTA ES LA CLAVE COMPLETA CORREGIDA:
-    const K = "const K = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
-    
+    const K = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
     const sb = supabase.createClient(U, K);
 
     async function cargar() {
