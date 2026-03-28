@@ -1,67 +1,58 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; background: #0f1014; color: white; padding: 20px; }
+        body { font-family: sans-serif; background: #0f1014; color: white; padding: 20px; text-align: center; }
         .con { max-width: 400px; margin: auto; }
-        .res { background: #10b981; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 15px; }
-        input, button { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: none; }
-        button { background: #3b82f6; color: white; cursor: pointer; }
-        .item { background: #1c1d24; padding: 10px; margin-top: 5px; border-radius: 5px; }
+        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; box-sizing: border-box; }
+        button { background: #3b82f6; color: white; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
     <div class="con">
-        <div class="res">TOTAL: <span id="bal">0</span> EUR</div>
+        <h2>Logística Luis</h2>
+        <div id="bal" style="background:#10b981; padding:15px; border-radius:10px; margin-bottom:10px;">Conectando...</div>
         <input type="text" id="cli" placeholder="Cliente">
         <input type="number" id="pre" placeholder="Precio">
-        <input type="text" id="rut" placeholder="Ruta">
-        <button id="btnG">GUARDAR</button>
-        <div id="lst"></div>
+        <button id="btnG">GUARDAR DATOS</button>
+        <div id="lst" style="margin-top:20px; text-align:left;"></div>
     </div>
 
 <script>
-    // Primero definimos las funciones para que GitHub las vea limpias
-    function cl() {
-        window.sb.from('portes').select('*').order('created_at', { ascending: false })
-        .then(function(r) {
-            if (r.error) return;
-            var d = r.data, t = 0, h = "";
-            for (var i = 0; i < d.length; i++) {
-                t = t + Number(d[i].precio);
-                h = h + '<div class="item">' + d[i].cliente + ': ' + d[i].precio + '</div>';
-            }
-            document.getElementById('bal').innerText = t;
-            document.getElementById('lst').innerHTML = h;
+    const U = "https://hkrbyjxspermnedciqrr.supabase.co";
+    const K = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzE2OSwiZXhwIjoyMDU4NjUzMTY5fQ.mHnZSi6ImFubzcy";
+    const sb = supabase.createClient(U, K);
+
+    async function cargar() {
+        const { data, error } = await sb.from('portes').select('*').order('created_at', { ascending: false });
+        if (error) { document.getElementById('bal').innerText = "Error: " + error.message; return; }
+        let t = 0, h = "";
+        data.forEach(d => {
+            t += Number(d.precio || 0);
+            h += '<div style="background:#1c1d24; padding:10px; margin-top:5px; border-radius:5px;">' + (d.cliente || 'S/N') + ': ' + (d.precio || 0) + '€</div>';
         });
+        document.getElementById('bal').innerText = "TOTAL: " + t + "€";
+        document.getElementById('lst').innerHTML = h;
     }
 
-    function g() {
-        var c = document.getElementById('cli').value;
-        var p = document.getElementById('pre').value;
-        var r = document.getElementById('rut').value;
+    async function guardar() {
+        const c = document.getElementById('cli').value;
+        const p = document.getElementById('pre').value;
         if (!c || !p) return alert("Faltan datos");
 
-        window.sb.from('portes').insert([{ cliente: c, precio: parseInt(p), origen: r }])
-        .then(function(res) {
-            if (res.error) alert("Error");
-            else {
-                document.getElementById('cli').value = "";
-                document.getElementById('pre').value = "";
-                cl();
-            }
-        });
+        const { error } = await sb.from('portes').insert([{ cliente: c, precio: parseInt(p) }]);
+        if (error) alert("Error de Supabase: " + error.message);
+        else {
+            document.getElementById('cli').value = "";
+            document.getElementById('pre').value = "";
+            cargar();
+        }
     }
 
-    // Al final, la configuración pesada
-    var u = "https://hkrbyjxspermnedciqrr.supabase.co";
-    var k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzE2OSwiZXhwIjoyMDU4NjUzMTY5fQ.mHnZSi6ImFubzcy";
-    
-    window.sb = window.supabase.createClient(u, k);
-    document.getElementById('btnG').onclick = g;
-    cl();
+    document.getElementById('btnG').onclick = guardar;
+    cargar();
 </script>
 </body>
 </html>
