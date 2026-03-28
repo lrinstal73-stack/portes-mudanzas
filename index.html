@@ -21,20 +21,14 @@
         <button id="btnG">GUARDAR DATOS</button>
         <div id="lst"></div>
     </div>
-
 <script>
-    // CONFIGURACIÓN: Pega la clave entre las comillas de K sin añadir nada más
     const U = "https://hkrbyjxspermnedciqrr.supabase.co";
-    const K = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NTEyODcsImV4cCI6MjA5MDEyNzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo"; 
-    
+    const K = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzE2OSwiZXhwIjoyMDU4NjUzMTY5fQ.mHnZSi6ImFubzcy";
     const sb = supabase.createClient(U, K);
 
     async function cargar() {
         const { data, error } = await sb.from('portes').select('*').order('created_at', { ascending: false });
-        if (error) { 
-            document.getElementById('bal').innerText = "Error: " + error.message; 
-            return; 
-        }
+        if (error) { document.getElementById('bal').innerText = "Error: " + error.message; return; }
         let t = 0, h = "";
         data.forEach(d => {
             t += Number(d.precio || 0);
@@ -48,14 +42,9 @@
         const c = document.getElementById('cli').value;
         const p = document.getElementById('pre').value;
         if (!c || !p) return alert("Faltan datos");
-
         const { error } = await sb.from('portes').insert([{ cliente: c, precio: parseInt(p) }]);
         if (error) alert("Error: " + error.message);
-        else {
-            document.getElementById('cli').value = "";
-            document.getElementById('pre').value = "";
-            cargar();
-        }
+        else { document.getElementById('cli').value = ""; document.getElementById('pre').value = ""; cargar(); }
     }
 
     document.getElementById('btnG').onclick = guardar;
