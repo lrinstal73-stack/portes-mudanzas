@@ -23,17 +23,21 @@
     </div>
 <script>
     const U = "https://hkrbyjxspermnedciqrr.supabase.co";
+    // ESTA ES LA CLAVE COMPLETA CORREGIDA:
     const K = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzE2OSwiZXhwIjoyMDU4NjUzMTY5fQ.mHnZSi6ImFubzcy";
+    
     const sb = supabase.createClient(U, K);
 
     async function cargar() {
         const { data, error } = await sb.from('portes').select('*').order('created_at', { ascending: false });
         if (error) { document.getElementById('bal').innerText = "Error: " + error.message; return; }
         let t = 0, h = "";
-        data.forEach(d => {
-            t += Number(d.precio || 0);
-            h += '<div class="item">' + (d.cliente || 'S/N') + ': ' + (d.precio || 0) + '€</div>';
-        });
+        if (data) {
+            data.forEach(d => {
+                t += Number(d.precio || 0);
+                h += '<div class="item">' + (d.cliente || 'S/N') + ': ' + (d.precio || 0) + '€</div>';
+            });
+        }
         document.getElementById('bal').innerText = "TOTAL: " + t + "€";
         document.getElementById('lst').innerHTML = h;
     }
@@ -46,7 +50,6 @@
         if (error) alert("Error: " + error.message);
         else { document.getElementById('cli').value = ""; document.getElementById('pre').value = ""; cargar(); }
     }
-
     document.getElementById('btnG').onclick = guardar;
     cargar();
 </script>
