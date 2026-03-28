@@ -2,52 +2,82 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Logística Luis</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: sans-serif; background: #0f1014; color: white; padding: 20px; text-align: center; }
         .con { max-width: 400px; margin: auto; }
-        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; box-sizing: border-box; }
+        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; box-sizing: border-box; font-size: 16px; }
         button { background: #3b82f6; color: white; font-weight: bold; cursor: pointer; }
-        .item { background: #1c1d24; padding: 10px; margin-top: 5px; border-radius: 5px; text-align: left; }
+        button:active { background: #2563eb; }
+        #bal { background: #10b981; padding: 15px; border-radius: 10px; margin-bottom: 10px; font-weight: bold; }
+        .item { background: #1c1d24; padding: 10px; margin-top: 5px; border-radius: 5px; text-align: left; border-left: 4px solid #3b82f6; }
     </style>
 </head>
 <body>
     <div class="con">
         <h2>Logística Luis</h2>
-        <div id="bal" style="background:#10b981; padding:15px; border-radius:10px; margin-bottom:10px;">Cargando...</div>
-        <input type="text" id="cli" placeholder="Cliente">
-        <input type="number" id="pre" placeholder="Precio">
-        <button id="btnG">GUARDAR DATOS</button>
-        <div id="lst"></div>
+        <div id="bal">Conectando...</div>
+        <input type="text" id="cli" placeholder="Nombre del Cliente">
+        <input type="number" id="pre" placeholder="Precio (€)">
+        <button id="btnG">GUARDAR PORTES</button>
+        <div id="lst" style="margin-top:20px;"></div>
     </div>
+
 <script>
+    // Configuración de conexión con la clave corregida (terminada en 6Ki3TAeo)
     const U = "https://hkrbyjxspermnedciqrr.supabase.co";
     const K = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
     const sb = supabase.createClient(U, K);
 
+    // Función para obtener y mostrar los datos
     async function cargar() {
         const { data, error } = await sb.from('portes').select('*').order('created_at', { ascending: false });
-        if (error) { document.getElementById('bal').innerText = "Error: " + error.message; return; }
-        let t = 0, h = "";
-        if (data) {
-            data.forEach(d => {
-                t += Number(d.precio || 0);
-                h += '<div class="item">' + (d.cliente || 'S/N') + ': ' + (d.precio || 0) + '€</div>';
-            });
+        
+        if (error) {
+            document.getElementById('bal').innerText = "Error: " + error.message;
+            return;
         }
-        document.getElementById('bal').innerText = "TOTAL: " + t + "€";
-        document.getElementById('lst').innerHTML = h;
+
+        let total = 0;
+        let html = "";
+        
+        data.forEach(d => {
+            const precio = Number(d.precio || 0);
+            total += precio;
+            html += `<div class="item"><strong>${d.cliente || 'Sin nombre'}</strong>: ${precio}€</div>`;
+        });
+
+        document.getElementById('bal').innerText = "TOTAL ACUMULADO: " + total + "€";
+        document.getElementById('lst').innerHTML = html;
     }
 
+    // Función para guardar nuevos datos
     async function guardar() {
-        const c = document.getElementById('cli').value;
-        const p = document.getElementById('pre').value;
-        if (!c || !p) return alert("Faltan datos");
-        const { error } = await sb.from('portes').insert([{ cliente: c, precio: parseInt(p) }]);
-        if (error) alert("Error: " + error.message);
-        else { document.getElementById('cli').value = ""; document.getElementById('pre').value = ""; cargar(); }
+        const cliente = document.getElementById('cli').value;
+        const precio = document.getElementById('pre').value;
+
+        if (!cliente || !precio) {
+            alert("Por favor, rellena ambos campos.");
+            return;
+        }
+
+        const { error } = await sb.from('portes').insert([{ 
+            cliente: cliente, 
+            precio: parseInt(precio) 
+        }]);
+
+        if (error) {
+            alert("Error al guardar: " + error.message);
+        } else {
+            document.getElementById('cli').value = "";
+            document.getElementById('pre').value = "";
+            cargar(); // Refrescar la lista automáticamente
+        }
     }
+
+    // Eventos iniciales
     document.getElementById('btnG').onclick = guardar;
     cargar();
 </script>
