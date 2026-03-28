@@ -41,7 +41,7 @@
             for (var i = 0; i < d.length; i++) {
                 if (d[i].cliente && d[i].precio) {
                     t = t + Number(d[i].precio);
-                    h = h + '<div class="card"><b>' + d[i].cliente + '</b>: ' + d[i].precio + '€</div>';
+                    h = h + '<div class="card"><b>' + d[i].cliente + '</b>: ' + d[i].precio + ' EUR</div>';
                 }
             }
             document.getElementById('balance').innerText = t;
@@ -72,6 +72,3 @@
 
     document.getElementById('btnGuardar').onclick = guardar;
     cargar();
-</script>
-</body>
-</html>
