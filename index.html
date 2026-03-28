@@ -2,54 +2,82 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Logística Luis</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logistica Luis</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: sans-serif; background: #0f1014; color: white; padding: 20px; text-align: center; }
-        .con { max-width: 400px; margin: auto; }
-        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; box-sizing: border-box; }
+        .container { max-width: 400px; margin: auto; }
+        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; font-size: 16px; box-sizing: border-box; }
         button { background: #3b82f6; color: white; font-weight: bold; cursor: pointer; }
-        .item { background: #1c1d24; padding: 10px; margin-top: 5px; border-radius: 5px; text-align: left; }
+        #balance { background: #10b981; padding: 15px; border-radius: 10px; margin-bottom: 10px; font-weight: bold; }
+        .item { background: #1c1d24; padding: 10px; margin-top: 5px; border-radius: 5px; text-align: left; border-left: 4px solid #3b82f6; }
     </style>
 </head>
 <body>
-    <div class="con">
-        <h2>Logística Luis</h2>
-        <div id="bal" style="background:#10b981; padding:15px; border-radius:10px; margin-bottom:10px;">Cargando...</div>
-        <input type="text" id="cli" placeholder="Cliente">
-        <input type="number" id="pre" placeholder="Precio">
-        <button id="btnG">GUARDAR DATOS</button>
-        <div id="lst"></div>
+    <div class="container">
+        <h2>LOGÍSTICA LUIS</h2>
+        <div id="balance">Conectando...</div>
+        <input type="text" id="cliente" placeholder="Nombre Cliente">
+        <input type="number" id="precio" placeholder="Precio (€)">
+        <button id="btnGuardar">GUARDAR PORTE</button>
+        <div id="lista" style="margin-top:20px;"></div>
     </div>
-<script>
-    const U = "https://hkrbyjxspermnedciqrr.supabase.co";
-    const K = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
-    const sb = supabase.createClient(U, K);
 
-    async function cargar() {
+<script>
+    const SUPABASE_URL = "https://hkrbyjxspermnedciqrr.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
+    
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function cargarDatos() {
         const { data, error } = await sb.from('portes').select('*').order('created_at', { ascending: false });
-        if (error) { document.getElementById('bal').innerText = "Error: " + error.message; return; }
-        let t = 0, h = "";
+        
+        if (error) {
+            document.getElementById('balance').innerText = "Error: " + error.message;
+            return;
+        }
+
+        let total = 0;
+        let htmlFinal = "";
+        
         if (data) {
-            data.forEach(d => {
-                t += Number(d.precio || 0);
-                h += '<div class="item">' + (d.cliente || 'S/N') + ': ' + (d.precio || 0) + '€</div>';
+            data.forEach(fila => {
+                const p = Number(fila.precio || 0);
+                total += p;
+                htmlFinal += "<div class='item'><strong>" + (fila.cliente || 'S/N') + "</strong>: " + p + "€</div>";
             });
         }
-        document.getElementById('bal').innerText = "TOTAL: " + t + "€";
-        document.getElementById('lst').innerHTML = h;
+
+        document.getElementById('balance').innerText = "TOTAL ACUMULADO: " + total + "€";
+        document.getElementById('lista').innerHTML = htmlFinal;
     }
 
-    async function guardar() {
-        const c = document.getElementById('cli').value;
-        const p = document.getElementById('pre').value;
-        if (!c || !p) return alert("Faltan datos");
-        const { error } = await sb.from('portes').insert([{ cliente: c, precio: parseInt(p) }]);
-        if (error) alert("Error: " + error.message);
-        else { document.getElementById('cli').value = ""; document.getElementById('pre').value = ""; cargar(); }
+    async function guardarPorte() {
+        const cli = document.getElementById('cliente').value;
+        const pre = document.getElementById('precio').value;
+
+        if (!cli || !pre) {
+            alert("Rellena todos los campos");
+            return;
+        }
+
+        const { error } = await sb.from('portes').insert([{ 
+            cliente: cli, 
+            precio: parseInt(pre) 
+        }]);
+
+        if (error) {
+            alert("Error al guardar: " + error.message);
+        } else {
+            document.getElementById('cliente').value = "";
+            document.getElementById('precio').value = "";
+            cargarDatos();
+        }
     }
-    document.getElementById('btnG').onclick = guardar;
-    cargar();
+
+    document.getElementById('btnGuardar').onclick = guardarPorte;
+    cargarDatos();
 </script>
 </body>
 </html>
