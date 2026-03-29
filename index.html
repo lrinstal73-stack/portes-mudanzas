@@ -88,7 +88,7 @@
 
         <div class="form-box">
             <input type="text" id="cli" placeholder="Nombre del cliente..." autocomplete="off">
-            <input type="number" id="pre" placeholder="Importe (€)" inputmode="decimal" step="any">
+            <input type="number" id="pre" placeholder="Importe (€)" inputmode="decimal">
             <button id="btnG">GUARDAR REGISTRO</button>
         </div>
 
@@ -100,8 +100,9 @@
     const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
 
     function err(m) {
+        console.error(m);
         const d = document.getElementById('error-display');
-        d.innerText = m + " (Toca para cerrar)";
+        d.innerText = m + " (Toca para reintentar)";
         d.style.display = 'block';
     }
 
@@ -111,17 +112,16 @@
             d.setHours(0,0,0,0);
             const fechaFiltro = d.toISOString();
 
+            // Usamos una petición simple para evitar problemas de CORS preflight
             const res = await fetch(`${URL_BASE}?select=*&created_at=gte.${fechaFiltro}&order=created_at.desc`, {
                 method: 'GET',
                 headers: {
                     'apikey': API_KEY,
-                    'Authorization': `Bearer ${API_KEY}`,
-                    'Content-Type': 'application/json',
-                    'Accept-Profile': 'public'
+                    'Authorization': 'Bearer ' + API_KEY
                 }
             });
 
-            if (!res.ok) throw new Error("Error de conexión");
+            if (!res.ok) throw new Error("Fallo en servidor: " + res.status);
 
             const data = await res.json();
             let sum = 0;
@@ -134,10 +134,10 @@
             });
 
             document.getElementById('bal').innerText = sum.toFixed(2) + "€";
-            document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5;margin-top:20px;'>No hay portes registrados hoy.</p>";
+            document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5;margin-top:20px;'>No hay portes hoy.</p>";
             document.getElementById('error-display').style.display = 'none';
         } catch (e) {
-            err("No se pudo actualizar la lista");
+            err("Error al conectar. Verifica tu conexión.");
         }
     }
 
@@ -149,7 +149,7 @@
         if (!c.value || !p.value) return;
 
         b.disabled = true;
-        b.innerText = "GUARDANDO...";
+        b.innerText = "PROCESANDO...";
 
         try {
             const res = await fetch(URL_BASE, {
@@ -158,8 +158,7 @@
                     "apikey": API_KEY,
                     "Authorization": "Bearer " + API_KEY,
                     "Content-Type": "application/json",
-                    "Prefer": "return=minimal",
-                    "Content-Profile": "public"
+                    "Prefer": "return=minimal"
                 },
                 body: JSON.stringify({
                     cliente: c.value.trim(),
@@ -167,21 +166,23 @@
                 })
             });
 
-            if (!res.ok) throw new Error("Fallo al enviar");
+            if (!res.ok) throw new Error("Error al enviar");
 
             c.value = ""; 
             p.value = "";
             await cargar();
         } catch (e) {
-            err("Error al guardar el registro");
+            err("Error al guardar. Reintenta en unos segundos.");
         } finally {
             b.disabled = false;
             b.innerText = "GUARDAR REGISTRO";
         }
     }
 
+    // Iniciar carga
     window.onload = cargar;
     document.getElementById('btnG').onclick = guardar;
+    document.getElementById('error-display').onclick = cargar;
 </script>
 </body>
 </html>
