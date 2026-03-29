@@ -69,7 +69,7 @@
         <div id="error-ui" class="error-msg"></div>
 
         <div id="balance-card">
-            <span style="font-size:11px; font-weight:bold; text-transform:uppercase; opacity:0.9;">Total Hoy</span>
+            <span style="font-size:11px; font-weight:bold; text-transform:uppercase; opacity:0.9;">Hoy</span>
             <span id="bal">0.00€</span>
         </div>
 
@@ -89,11 +89,8 @@
     async function cargar() {
         const errUI = document.getElementById('error-ui');
         try {
-            // Obtenemos solo la parte de la fecha YYYY-MM-DD
-            const hoy = new Date().toISOString().split('T')[0];
-            
-            // Añadimos cache buster para evitar respuestas antiguas
-            const url = `${URL_BASE}?select=*&created_at=gte.${hoy}&order=created_at.desc&t=${Date.now()}`;
+            // Bajamos los últimos 100 para asegurar que cubrimos el día entero sin importar el desfase
+            const url = `${URL_BASE}?select=*&order=created_at.desc&limit=100&t=${Date.now()}`;
             
             const res = await fetch(url, {
                 method: 'GET',
@@ -106,20 +103,32 @@
             if (!res.ok) throw new Error("Fallo de servidor");
 
             const data = await res.json();
+            
+            // Usamos la fecha del sistema (España) para comparar
+            const ahora = new Date();
+            const diaHoy = ahora.getDate();
+            const mesHoy = ahora.getMonth();
+            const anioHoy = ahora.getFullYear();
+            
             let sum = 0;
             let h = "";
             
             data.forEach(x => {
-                const p = parseFloat(x.precio) || 0;
-                sum += p;
-                h += `<div class="item"><span><b>${x.cliente.toUpperCase()}</b></span><span class="price">${p.toFixed(2)}€</span></div>`;
+                const f = new Date(x.created_at);
+                
+                // Si el registro coincide con el día, mes y año actual en el móvil del usuario
+                if (f.getDate() === diaHoy && f.getMonth() === mesHoy && f.getFullYear() === anioHoy) {
+                    const p = parseFloat(x.precio) || 0;
+                    sum += p;
+                    h += `<div class="item"><span><b>${x.cliente.toUpperCase()}</b></span><span class="price">${p.toFixed(2)}€</span></div>`;
+                }
             });
 
             document.getElementById('bal').innerText = sum.toFixed(2) + "€";
-            document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5;'>No hay portes para hoy.</p>";
+            document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5;'>Sin registros hoy.</p>";
             errUI.style.display = 'none';
         } catch (e) {
-            errUI.innerText = "Error al conectar. Reintenta.";
+            errUI.innerText = "Error de red. Intenta refrescar.";
             errUI.style.display = 'block';
         }
     }
@@ -154,10 +163,10 @@
             c.value = ""; 
             p.value = "";
             
-            // Recargar tras un pequeño delay para asegurar propagación en DB
-            setTimeout(cargar, 500);
+            // Recarga instantánea
+            setTimeout(cargar, 300);
         } catch (e) {
-            alert("Error al guardar registro.");
+            alert("Fallo al guardar registro.");
         } finally {
             b.disabled = false;
             b.innerText = "GUARDAR";
