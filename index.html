@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logística Luis - Gestión Total</title>
+    <title>Logística Luis - Sistema Resiliente</title>
     <style>
         :root {
             --bg: #0f172a;
@@ -63,12 +63,13 @@
         .price { font-weight: 800; color: var(--success); font-size: 19px; }
 
         #error-display {
-            background: rgba(239, 68, 68, 0.2);
-            color: #f87171;
+            background: rgba(239, 68, 68, 0.9);
+            color: #fff;
             padding: 12px; border-radius: 12px;
             margin-bottom: 15px; display: none;
             font-size: 13px; text-align: center;
             border: 1px solid var(--danger);
+            position: sticky; top: 10px; z-index: 100;
         }
     </style>
 </head>
@@ -76,7 +77,7 @@
     <div class="container">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
             <h2 style="color:var(--primary); font-size:20px; margin:0; font-weight:800;">LOGÍSTICA LUIS</h2>
-            <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:6px 12px; border-radius:8px; font-size:12px; cursor:pointer;">ACTUALIZAR</button>
+            <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:6px 12px; border-radius:8px; font-size:12px; cursor:pointer;">REINTENTAR</button>
         </div>
 
         <div id="error-display" onclick="this.style.display='none'"></div>
@@ -100,28 +101,30 @@
     const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
 
     function err(m) {
-        console.error(m);
         const d = document.getElementById('error-display');
-        d.innerText = m + " (Toca para reintentar)";
+        d.innerText = m + " (Toca para ocultar)";
         d.style.display = 'block';
+        setTimeout(() => { d.style.display = 'none'; }, 5000);
     }
 
-    async function cargar() {
+    async function cargar(retryCount = 0) {
         try {
             const d = new Date();
             d.setHours(0,0,0,0);
             const fechaFiltro = d.toISOString();
+            const cacheBuster = `&t=${Date.now()}`;
 
-            // Usamos una petición simple para evitar problemas de CORS preflight
-            const res = await fetch(`${URL_BASE}?select=*&created_at=gte.${fechaFiltro}&order=created_at.desc`, {
+            const res = await fetch(`${URL_BASE}?select=*&created_at=gte.${fechaFiltro}&order=created_at.desc${cacheBuster}`, {
                 method: 'GET',
+                mode: 'cors',
                 headers: {
                     'apikey': API_KEY,
-                    'Authorization': 'Bearer ' + API_KEY
+                    'Authorization': 'Bearer ' + API_KEY,
+                    'Range': '0-99'
                 }
             });
 
-            if (!res.ok) throw new Error("Fallo en servidor: " + res.status);
+            if (!res.ok) throw new Error("Error " + res.status);
 
             const data = await res.json();
             let sum = 0;
@@ -134,10 +137,15 @@
             });
 
             document.getElementById('bal').innerText = sum.toFixed(2) + "€";
-            document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5;margin-top:20px;'>No hay portes hoy.</p>";
+            document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5;margin-top:20px;'>No hay datos para hoy.</p>";
             document.getElementById('error-display').style.display = 'none';
         } catch (e) {
-            err("Error al conectar. Verifica tu conexión.");
+            console.error(e);
+            if (retryCount < 2) {
+                setTimeout(() => cargar(retryCount + 1), 1000);
+            } else {
+                err("Fallo de red persistente. Reintenta manualmente.");
+            }
         }
     }
 
@@ -148,12 +156,16 @@
 
         if (!c.value || !p.value) return;
 
+        const valCliente = c.value.trim();
+        const valPrecio = parseFloat(p.value);
+
         b.disabled = true;
-        b.innerText = "PROCESANDO...";
+        b.innerText = "ENVIANDO...";
 
         try {
             const res = await fetch(URL_BASE, {
                 method: "POST",
+                mode: 'cors',
                 headers: {
                     "apikey": API_KEY,
                     "Authorization": "Bearer " + API_KEY,
@@ -161,28 +173,32 @@
                     "Prefer": "return=minimal"
                 },
                 body: JSON.stringify({
-                    cliente: c.value.trim(),
-                    precio: parseFloat(p.value)
+                    cliente: valCliente,
+                    precio: valPrecio
                 })
             });
 
-            if (!res.ok) throw new Error("Error al enviar");
+            if (!res.ok) throw new Error("Error en envío");
 
             c.value = ""; 
             p.value = "";
-            await cargar();
+            // Pequeño retardo para dar tiempo a la base de datos a indexar
+            setTimeout(cargar, 500);
         } catch (e) {
-            err("Error al guardar. Reintenta en unos segundos.");
+            err("No se pudo guardar. Comprueba tu conexión a internet.");
         } finally {
             b.disabled = false;
             b.innerText = "GUARDAR REGISTRO";
         }
     }
 
-    // Iniciar carga
-    window.onload = cargar;
+    window.onload = () => {
+        cargar();
+        // Recarga automática cada 5 minutos por si dejas la pestaña abierta
+        setInterval(cargar, 300000);
+    };
+    
     document.getElementById('btnG').onclick = guardar;
-    document.getElementById('error-display').onclick = cargar;
 </script>
 </body>
 </html>
