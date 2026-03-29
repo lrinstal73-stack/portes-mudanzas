@@ -65,7 +65,7 @@
             <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:5px 10px; border-radius:8px; font-size:11px;">REFRESCAR</button>
         </div>
 
-        <div id="error-ui" class="error-msg">Error de conexión. Reintentando...</div>
+        <div id="error-ui" class="error-msg">Error de conexión.</div>
 
         <div id="balance-card">
             <span style="font-size:11px; font-weight:bold; text-transform:uppercase; opacity:0.9;">Total Hoy</span>
@@ -74,7 +74,7 @@
 
         <div class="form-box">
             <input type="text" id="cli" placeholder="Cliente" autocomplete="off">
-            <input type="number" id="pre" placeholder="Importe €" inputmode="decimal">
+            <input type="number" id="pre" placeholder="Importe €" inputmode="decimal" step="any">
             <button id="btnG">GUARDAR</button>
         </div>
 
@@ -87,11 +87,14 @@
 
     async function cargar() {
         try {
-            // Obtenemos el inicio del día en hora local y lo pasamos a ISO
-            const inicioDia = new Date();
-            inicioDia.setHours(0, 0, 0, 0);
+            // Generar fecha de hoy a las 00:00:00 en hora local
+            const ahora = new Date();
+            const hoy = ahora.getFullYear() + '-' + 
+                        String(ahora.getMonth() + 1).padStart(2, '0') + '-' + 
+                        String(ahora.getDate()).padStart(2, '0') + 'T00:00:00';
             
-            const res = await fetch(`${URL_BASE}?select=*&created_at=gte.${inicioDia.toISOString()}&order=created_at.desc`, {
+            // Consultar registros mayores o iguales a hoy a las 00:00
+            const res = await fetch(`${URL_BASE}?select=*&created_at=gte.${hoy}&order=created_at.desc`, {
                 method: 'GET',
                 headers: { 'apikey': API_KEY }
             });
@@ -142,8 +145,10 @@
 
             if (!res.ok) throw new Error();
 
-            c.value = ""; p.value = "";
-            await cargar();
+            c.value = ""; 
+            p.value = "";
+            // Esperar un instante para que el servidor procese y luego recargar
+            setTimeout(cargar, 300);
         } catch (e) {
             alert("Error al guardar. Verifica tu conexión.");
         } finally {
@@ -152,6 +157,7 @@
         }
     }
 
+    // Carga inicial
     window.onload = cargar;
     document.getElementById('btnG').onclick = guardar;
 </script>
