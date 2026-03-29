@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logística Luis - Gestión Total</title>
+    <title>Logística Luis - Sistema Directo</title>
     <style>
         :root {
             --bg: #0f172a;
@@ -59,7 +59,7 @@
             color: #f87171;
             padding: 10px; border-radius: 10px;
             margin-bottom: 15px; display: none;
-            font-size: 12px; text-align: center;
+            font-size: 13px; text-align: center;
             border: 1px solid var(--danger);
         }
     </style>
@@ -80,7 +80,7 @@
 
         <div class="form-box">
             <input type="text" id="cli" placeholder="Nombre del cliente..." autocomplete="off">
-            <input type="number" id="pre" placeholder="Importe €" inputmode="decimal" step="any">
+            <input type="number" id="pre" placeholder="Importe €" inputmode="decimal">
             <button id="btnG">GUARDAR REGISTRO</button>
         </div>
 
@@ -88,46 +88,48 @@
     </div>
 
 <script>
-    // Configuración manual para evitar fallos de librería
-    const URL_REST = "https://hkrbyjxspermnedciqrr.supabase.co/rest/v1/registros";
-    const KEY_SB = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
+    // Usamos la API REST directamente. Sin librerías externas.
+    const URL_BASE = "https://hkrbyjxspermnedciqrr.supabase.co/rest/v1/registros";
+    const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
 
-    function mostrarError(msg) {
-        const div = document.getElementById('error-display');
-        div.innerText = "Error: " + msg;
-        div.style.display = 'block';
+    function err(m) {
+        const d = document.getElementById('error-display');
+        d.innerText = m;
+        d.style.display = 'block';
     }
 
     async function cargar() {
         try {
-            const hoy = new Date().toISOString().split('T')[0];
-            
-            const response = await fetch(`${URL_REST}?created_at=gte.${hoy}&select=*&order=created_at.desc`, {
-                method: 'GET',
+            // Filtro de hoy: Mayor o igual a las 00:00:00 de hoy en UTC
+            const hoy = new Date();
+            hoy.setHours(0,0,0,0);
+            const isoHoy = hoy.toISOString();
+
+            const res = await fetch(`${URL_BASE}?created_at=gte.${isoHoy}&select=*&order=created_at.desc`, {
                 headers: {
-                    'apikey': KEY_SB,
-                    'Authorization': `Bearer ${KEY_SB}`,
-                    'Content-Type': 'application/json'
+                    "apikey": API_KEY,
+                    "Authorization": "Bearer " + API_KEY,
+                    "Content-Type": "application/json"
                 }
             });
 
-            if (!response.ok) throw new Error(await response.text());
+            if (!res.ok) throw new Error("Status: " + res.status);
 
-            const data = await response.json();
-            let total = 0;
-            let html = "";
+            const data = await res.json();
+            let sum = 0;
+            let h = "";
             
-            data.forEach(d => {
-                const val = parseFloat(d.precio) || 0;
-                total += val;
-                html += `<div class="item"><span><b>${d.cliente}</b></span><span class="price">${val.toFixed(2)}€</span></div>`;
+            data.forEach(x => {
+                const p = parseFloat(x.precio) || 0;
+                sum += p;
+                h += `<div class="item"><span><b>${x.cliente}</b></span><span class="price">${p.toFixed(2)}€</span></div>`;
             });
-            
-            document.getElementById('bal').innerText = total.toFixed(2) + "€";
-            document.getElementById('lista').innerHTML = html || "<p style='text-align:center; opacity:0.5;'>Sin registros hoy.</p>";
+
+            document.getElementById('bal').innerText = sum.toFixed(2) + "€";
+            document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5'>Sin datos hoy.</p>";
             document.getElementById('error-display').style.display = 'none';
         } catch (e) {
-            mostrarError(e.message);
+            err("Error al cargar datos: " + e.message);
         }
     }
 
@@ -139,16 +141,16 @@
         if (!c.value || !p.value) return;
 
         b.disabled = true;
-        b.innerText = "PROCESANDO...";
+        b.innerText = "ENVIANDO...";
 
         try {
-            const response = await fetch(URL_REST, {
-                method: 'POST',
+            const res = await fetch(URL_BASE, {
+                method: "POST",
                 headers: {
-                    'apikey': KEY_SB,
-                    'Authorization': `Bearer ${KEY_SB}`,
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=representation'
+                    "apikey": API_KEY,
+                    "Authorization": "Bearer " + API_KEY,
+                    "Content-Type": "application/json",
+                    "Prefer": "return=minimal"
                 },
                 body: JSON.stringify({
                     cliente: c.value.trim(),
@@ -156,22 +158,20 @@
                 })
             });
 
-            if (!response.ok) throw new Error(await response.text());
+            if (!res.ok) throw new Error("Error en envío: " + res.status);
 
-            c.value = ""; 
-            p.value = "";
+            c.value = ""; p.value = "";
             await cargar();
         } catch (e) {
-            mostrarError("Fallo: " + e.message);
+            err("No se pudo guardar: " + e.message);
         } finally {
             b.disabled = false;
             b.innerText = "GUARDAR REGISTRO";
         }
     }
 
-    // Iniciar
-    window.onload = cargar;
     document.getElementById('btnG').onclick = guardar;
+    window.onload = cargar;
 </script>
 </body>
 </html>
