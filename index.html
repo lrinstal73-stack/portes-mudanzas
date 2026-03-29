@@ -64,7 +64,6 @@
     </div>
 
 <script>
-    // Variables de entorno limpias
     const PROJECT_ID = "fuzmifguzpveclqexmsu";
     const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1em1pZmd1enB2ZWNscWV4bXN1Iiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.C6-n-8R_fF-G5g_m-E_r-v_l-p-s-q-t-u-v-w-x-y-z";
     const URL = `https://${PROJECT_ID}.supabase.co/rest/v1/logistica_luis`;
@@ -82,13 +81,11 @@
             const res = await fetch(`${URL}?select=*&order=created_at.desc`, { headers });
             
             if (!res.ok) {
-                if(res.status === 404) status.innerHTML = '<span style="color:orange">ERROR: TABLA NO CREADA</span>';
-                else status.innerHTML = '<span style="color:var(--error)">ERROR DE SERVIDOR</span>';
+                status.innerHTML = '<span style="color:orange">ERROR DE TABLA</span>';
                 return;
             }
 
             const data = await res.json();
-            // Obtener fecha local YYYY-MM-DD sin problemas de zona horaria
             const hoy = new Date().toLocaleDateString('sv-SE'); 
             
             let suma = 0;
@@ -105,8 +102,7 @@
             document.getElementById('lista').innerHTML = html || '<p style="text-align:center; opacity:0.5">Sin portes hoy</p>';
             status.innerHTML = '<span style="color:var(--success)">● CONECTADO</span>';
         } catch (e) {
-            console.error(e);
-            status.innerHTML = '<span style="color:var(--error)">ERROR DE RED: REINTENTANDO...</span>';
+            status.innerHTML = '<span style="color:var(--error)">ERROR DE RED</span>';
         }
     }
 
@@ -130,13 +126,17 @@
                 })
             });
 
-            if(!res.ok) throw new Error();
+            if(!res.ok) {
+                const errData = await res.json();
+                console.error("Error Supabase:", errData);
+                throw new Error("Error en servidor");
+            }
             
             c.value = ""; 
             p.value = "";
             await cargar();
         } catch (e) {
-            alert("Error al conectar con la base de datos.");
+            alert("No se pudo guardar. Verifica que el SQL en Supabase se ejecutó correctamente.");
         } finally {
             b.disabled = false;
             b.innerText = "GUARDAR REGISTRO";
@@ -144,7 +144,7 @@
     }
 
     window.onload = cargar;
-    setInterval(cargar, 15000); // Actualiza cada 15 segundos
+    setInterval(cargar, 15000);
 </script>
 </body>
 </html>
