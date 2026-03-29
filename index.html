@@ -3,115 +3,226 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logistica Luis</title>
+    <title>Logística Luis - Portes</title>
+    <!-- Cargamos Supabase de forma segura -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; text-align: center; margin: 0; }
-        .container { max-width: 400px; margin: auto; }
-        h2 { color: #3b82f6; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
-        .card { background: #10b981; padding: 25px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2); }
-        .amount { font-size: 36px; font-weight: bold; display: block; }
-        .form-box { background: #1e293b; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        input { width: 100%; padding: 16px; margin: 10px 0; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 18px; background: #3b82f6; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 16px; text-transform: uppercase; }
-        button:active { transform: scale(0.96); background: #2563eb; }
-        button:disabled { background: #475569; cursor: not-allowed; }
-        .item { background: #1e293b; padding: 18px; margin-top: 12px; border-radius: 12px; text-align: left; border-left: 6px solid #3b82f6; display: flex; justify-content: space-between; align-items: center; }
-        .item span { font-weight: 500; font-size: 17px; }
-        .item b { color: #10b981; font-size: 20px; }
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --primary: #3b82f6;
+            --success: #10b981;
+            --text: #f8fafc;
+            --accent: #6366f1;
+        }
+        body { 
+            font-family: -apple-system, system-ui, sans-serif; 
+            background-color: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            padding: 15px; 
+            display: flex; 
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .container { width: 100%; max-width: 450px; padding-bottom: 40px; }
+        
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 20px; 
+            padding-top: 10px;
+        }
+        h2 { margin: 0; color: var(--primary); text-transform: uppercase; font-weight: 900; font-size: 20px; letter-spacing: 1px; }
+        
+        .refresh-btn { 
+            background: rgba(59, 130, 246, 0.1); 
+            border: 1.5px solid var(--primary); 
+            color: var(--primary); 
+            padding: 8px 16px; 
+            border-radius: 12px; 
+            font-size: 13px; 
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        #balance-card { 
+            background: linear-gradient(135deg, #10b981, #059669);
+            padding: 30px 20px; 
+            border-radius: 24px; 
+            text-align: center; 
+            margin-bottom: 25px; 
+            box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.4);
+        }
+        #bal-label { font-size: 12px; font-weight: 800; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; }
+        #bal { font-size: 48px; font-weight: 950; display: block; margin-top: 5px; }
+        
+        .form-box { 
+            background: var(--card); 
+            padding: 24px; 
+            border-radius: 24px; 
+            margin-bottom: 25px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        input { 
+            width: 100%; 
+            padding: 16px; 
+            margin-bottom: 15px; 
+            border-radius: 14px; 
+            border: 2px solid #334155; 
+            background: #0f172a; 
+            color: white; 
+            font-size: 18px; 
+            box-sizing: border-box; 
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus { border-color: var(--primary); }
+        
+        button#btnG { 
+            width: 100%; 
+            padding: 18px; 
+            border-radius: 14px; 
+            border: none; 
+            background: linear-gradient(to right, var(--primary), var(--accent)); 
+            color: white; 
+            font-size: 18px; 
+            font-weight: 900; 
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+        button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.5; filter: grayscale(1); }
+
+        .item { 
+            background: var(--card); 
+            padding: 18px; 
+            margin-bottom: 12px; 
+            border-radius: 18px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            border-left: 6px solid var(--primary);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .item b { font-size: 17px; color: #f1f5f9; }
+        .price { font-weight: 900; color: var(--success); font-size: 20px; }
+        
+        #error-msg {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: none;
+            font-size: 13px;
+            text-align: center;
+            border: 1px solid var(--error);
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Logística Luis</h2>
+        <div class="header">
+            <h2>Logística Luis</h2>
+            <button class="refresh-btn" onclick="cargar()">ACTUALIZAR</button>
+        </div>
         
-        <div class="card">
-            <span style="font-size: 12px; opacity: 0.9; font-weight: bold;">TOTAL ACUMULADO</span>
-            <span id="bal" class="amount">...</span>
+        <div id="error-msg"></div>
+
+        <div id="balance-card">
+            <span id="bal-label">Total Acumulado</span>
+            <span id="bal">0.00€</span>
         </div>
 
         <div class="form-box">
-            <input type="text" id="cli" placeholder="Nombre del Cliente" autocomplete="off">
-            <input type="number" id="pre" placeholder="Precio del Porte (€)" inputmode="decimal" step="any">
+            <input type="text" id="cli" placeholder="Nombre del cliente..." autocomplete="off">
+            <input type="number" id="pre" placeholder="Importe €" inputmode="decimal" step="any">
             <button id="btnG">Guardar Porte</button>
         </div>
 
-        <div id="lst" style="margin-top:25px; padding-bottom: 40px;"></div>
+        <div id="lista"></div>
     </div>
 
 <script>
-    const U = "https://hkrbyjxspermnedciqrr.supabase.co";
-    const K = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
+    // Configuración de Supabase
+    const URL_SB = "https://hkrbyjxspermnedciqrr.supabase.co";
+    const KEY_SB = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
     
-    const sb = supabase.createClient(U, K);
+    const client = supabase.createClient(URL_SB, KEY_SB);
+
+    function showError(msg) {
+        const e = document.getElementById('error-msg');
+        e.innerText = msg;
+        e.style.display = 'block';
+        setTimeout(() => e.style.display = 'none', 6000);
+    }
 
     async function cargar() {
         try {
-            const { data, error } = await sb.from('portes').select('*').order('created_at', { ascending: false });
-            
+            const { data, error } = await client.from('portes').select('*').order('created_at', { ascending: false });
             if (error) throw error;
 
             let total = 0;
             let html = "";
-            
             if (data && data.length > 0) {
                 data.forEach(d => {
                     const p = parseFloat(d.precio) || 0;
                     total += p;
-                    html += "<div class='item'><span>" + (d.cliente || 'Desconocido') + "</span><b>" + p.toFixed(2) + "€</b></div>";
+                    html += `
+                        <div class="item">
+                            <b>${d.cliente}</b>
+                            <span class="price">${p.toFixed(2)}€</span>
+                        </div>`;
                 });
-                document.getElementById('bal').innerText = total.toFixed(2) + "€";
             } else {
-                document.getElementById('bal').innerText = "0.00€";
-                html = "<p style='color:#64748b; margin-top: 20px;'>No hay registros.</p>";
+                html = "<p style='text-align:center; opacity:0.5; margin-top:20px;'>No hay registros guardados.</p>";
             }
-            document.getElementById('lst').innerHTML = html;
-        } catch (err) {
-            console.error(err);
-            document.getElementById('bal').innerText = "Error";
+            
+            document.getElementById('bal').innerText = total.toFixed(2) + "€";
+            document.getElementById('lista').innerHTML = html;
+        } catch (e) {
+            showError("Error al conectar con la base de datos.");
+            console.error(e);
         }
     }
 
     async function guardar() {
-        const cInput = document.getElementById('cli');
-        const pInput = document.getElementById('pre');
-        const btn = document.getElementById('btnG');
+        const c = document.getElementById('cli');
+        const p = document.getElementById('pre');
+        const b = document.getElementById('btnG');
 
-        if (!cInput.value || !pInput.value) {
-            alert("Completa Cliente y Precio");
-            return;
-        }
+        if (!c.value || !p.value) return;
 
-        btn.disabled = true;
-        btn.innerText = "Conectando...";
-
-        const precioValue = parseFloat(pInput.value);
+        b.disabled = true;
+        b.innerText = "GUARDANDO...";
 
         try {
-            const { data, error } = await sb
-                .from('portes')
-                .insert([{ cliente: cInput.value, precio: precioValue }])
-                .select();
+            const { error } = await client.from('portes').insert([{ 
+                cliente: c.value, 
+                precio: parseFloat(p.value) 
+            }]);
 
             if (error) {
-                // Si hay un error, lo mostramos explícitamente para diagnosticar
-                alert("Error de Supabase: " + error.message + "\nCódigo: " + error.code);
-                console.error(error);
+                showError("No se pudo guardar: " + error.message);
             } else {
-                cInput.value = "";
-                pInput.value = "";
+                c.value = ""; 
+                p.value = "";
+                if (navigator.vibrate) navigator.vibrate(50); // Vibración de éxito
                 await cargar();
             }
-        } catch (err) {
-            alert("Error crítico: " + err.message);
+        } catch (e) {
+            showError("Error de red o conexión.");
         } finally {
-            btn.disabled = false;
-            btn.innerText = "Guardar Porte";
+            b.disabled = false;
+            b.innerText = "Guardar Porte";
         }
     }
 
     document.getElementById('btnG').onclick = guardar;
-    // Carga inicial
     window.onload = cargar;
 </script>
 </body>
