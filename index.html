@@ -55,7 +55,7 @@
 
         .status-badge {
             font-size: 10px; text-align: center; margin-bottom: 10px; 
-            padding: 4px; border-radius: 4px; text-transform: uppercase; font-weight: bold;
+            padding: 6px; border-radius: 6px; text-transform: uppercase; font-weight: bold;
         }
         .status-ok { background: #064e3b; color: #10b981; }
         .status-err { background: #7f1d1d; color: #f87171; }
@@ -63,11 +63,11 @@
 </head>
 <body>
     <div class="container">
-        <div id="status" class="status-badge status-ok">Iniciando...</div>
+        <div id="status" class="status-badge">Verificando conexión...</div>
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
             <h2 style="color:var(--primary); font-size:18px; margin:0; font-weight:800;">LOGÍSTICA LUIS</h2>
-            <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:5px 10px; border-radius:8px; font-size:11px;">RECARGAR</button>
+            <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:5px 10px; border-radius:8px; font-size:11px;">REINTENTAR</button>
         </div>
 
         <div id="balance-card">
@@ -76,9 +76,9 @@
         </div>
 
         <div class="form-box">
-            <input type="text" id="cli" placeholder="Nombre Cliente" autocomplete="off">
+            <input type="text" id="cli" placeholder="Cliente" autocomplete="off">
             <input type="number" id="pre" placeholder="Importe €" inputmode="decimal" step="any">
-            <button id="btnG">GUARDAR REGISTRO</button>
+            <button id="btnG">GUARDAR</button>
         </div>
 
         <div id="lista"></div>
@@ -93,17 +93,24 @@
         const listEl = document.getElementById('lista');
         
         try {
-            const res = await fetch(`${URL_BASE}?select=*&order=created_at.desc&limit=50`, {
+            const res = await fetch(`${URL_BASE}?select=*&order=created_at.desc`, {
                 headers: { 
                     'apikey': API_KEY, 
-                    'Authorization': 'Bearer ' + API_KEY 
+                    'Authorization': 'Bearer ' + API_KEY,
+                    'Content-Type': 'application/json'
                 }
             });
 
-            if (!res.ok) throw new Error("Error de conexión");
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.message || "RLS Bloqueado");
+            }
 
             const data = await res.json();
-            const hoy = new Date().toISOString().split('T')[0];
+            
+            // Fecha de hoy en formato local YYYY-MM-DD
+            const ahora = new Date();
+            const hoy = ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0') + '-' + String(ahora.getDate()).padStart(2, '0');
             
             let total = 0;
             let html = "";
@@ -118,11 +125,11 @@
             });
 
             document.getElementById('bal').innerText = total.toFixed(2) + "€";
-            listEl.innerHTML = html || "<p style='text-align:center;opacity:0.5;'>No hay portes registrados hoy.</p>";
-            statusEl.innerText = "Sistema Online";
+            listEl.innerHTML = html || "<p style='text-align:center;opacity:0.5;'>Sin registros hoy.</p>";
+            statusEl.innerText = "SISTEMA ONLINE";
             statusEl.className = "status-badge status-ok";
         } catch (e) {
-            statusEl.innerText = "Error: RLS Activo";
+            statusEl.innerText = "ERROR: REVISA POLÍTICAS EN SUPABASE";
             statusEl.className = "status-badge status-err";
         }
     }
@@ -134,7 +141,6 @@
 
         if (!c.value || !p.value) return;
         b.disabled = true;
-        b.innerText = "GUARDANDO...";
 
         try {
             const res = await fetch(URL_BASE, {
@@ -157,10 +163,9 @@
             p.value = "";
             cargar();
         } catch (e) {
-            alert("Error al guardar. Verifica la conexión.");
+            alert("Error al guardar.");
         } finally {
             b.disabled = false;
-            b.innerText = "GUARDAR REGISTRO";
         }
     }
 
