@@ -55,7 +55,8 @@
 
         .error-msg {
             background: #ef4444; color: white; font-size: 12px; text-align: center; 
-            padding: 8px; border-radius: 8px; margin-bottom: 10px; display: none;
+            padding: 10px; border-radius: 8px; margin-bottom: 10px; display: none;
+            word-break: break-all;
         }
     </style>
 </head>
@@ -63,7 +64,7 @@
     <div class="container">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
             <h2 style="color:var(--primary); font-size:18px; margin:0; font-weight:800;">LOGÍSTICA LUIS</h2>
-            <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:5px 10px; border-radius:8px; font-size:11px;">RECARGAR</button>
+            <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:5px 10px; border-radius:8px; font-size:11px;">FORZAR RECARGA</button>
         </div>
 
         <div id="error-ui" class="error-msg"></div>
@@ -91,19 +92,21 @@
         const listUI = document.getElementById('lista');
         
         try {
-            // Añadimos un parámetro aleatorio para saltar la caché del navegador
-            const url = `${URL_BASE}?select=*&order=created_at.desc&limit=50&nocache=${Date.now()}`;
+            // Consulta ultra-simple sin filtros complejos para diagnosticar
+            const url = `${URL_BASE}?select=*&order=created_at.desc&limit=20&t=${Date.now()}`;
             
             const res = await fetch(url, {
                 method: 'GET',
                 headers: { 
                     'apikey': API_KEY,
-                    'Authorization': 'Bearer ' + API_KEY,
-                    'Range-Unit': 'items'
+                    'Authorization': 'Bearer ' + API_KEY
                 }
             });
 
-            if (!res.ok) throw new Error("Acceso bloqueado por Supabase");
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || `Error ${res.status}: Bloqueo de RLS`);
+            }
 
             const data = await res.json();
             
@@ -126,9 +129,8 @@
             listUI.innerHTML = h || "<p style='text-align:center;opacity:0.5;'>Sin registros hoy.</p>";
             errUI.style.display = 'none';
         } catch (e) {
-            errUI.innerText = "Error: La base de datos sigue bloqueada.";
+            errUI.innerText = "DIAGNÓSTICO: " + e.message;
             errUI.style.display = 'block';
-            listUI.innerHTML = "";
         }
     }
 
@@ -157,14 +159,13 @@
                 })
             });
 
-            if (!res.ok) throw new Error();
+            if (!res.ok) throw new Error("No se pudo guardar");
             
             c.value = ""; 
             p.value = "";
-            // Esperamos un poco antes de recargar para que Supabase procese
-            setTimeout(cargar, 500);
+            setTimeout(cargar, 400);
         } catch (e) {
-            alert("Error al guardar.");
+            alert(e.message);
         } finally {
             b.disabled = false;
             b.innerText = "GUARDAR";
