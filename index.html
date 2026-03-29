@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logística Luis - Gestión</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>Logística Luis - Gestión Total</title>
     <style>
         :root {
             --bg: #0f172a;
@@ -62,7 +61,6 @@
             margin-bottom: 15px; display: none;
             font-size: 12px; text-align: center;
             border: 1px solid var(--danger);
-            cursor: pointer;
         }
     </style>
 </head>
@@ -90,47 +88,46 @@
     </div>
 
 <script>
-    const URL_SB = "https://hkrbyjxspermnedciqrr.supabase.co";
+    // Configuración manual para evitar fallos de librería
+    const URL_REST = "https://hkrbyjxspermnedciqrr.supabase.co/rest/v1/registros";
     const KEY_SB = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
-    
-    // Conexión estándar
-    const client = supabase.createClient(URL_SB, KEY_SB);
 
     function mostrarError(msg) {
         const div = document.getElementById('error-display');
-        div.innerText = "Error: " + msg + " (Toca para cerrar)";
+        div.innerText = "Error: " + msg;
         div.style.display = 'block';
     }
 
     async function cargar() {
         try {
-            // Obtenemos la fecha de hoy en formato YYYY-MM-DD para evitar errores de zona horaria
             const hoy = new Date().toISOString().split('T')[0];
             
-            const { data, error } = await client
-                .from('registros')
-                .select('cliente, precio, created_at')
-                .gte('created_at', hoy) // Supabase entiende este string perfectamente
-                .order('created_at', { ascending: false });
-            
-            if (error) throw error;
+            const response = await fetch(`${URL_REST}?created_at=gte.${hoy}&select=*&order=created_at.desc`, {
+                method: 'GET',
+                headers: {
+                    'apikey': KEY_SB,
+                    'Authorization': `Bearer ${KEY_SB}`,
+                    'Content-Type': 'application/json'
+                }
+            });
 
+            if (!response.ok) throw new Error(await response.text());
+
+            const data = await response.json();
             let total = 0;
             let html = "";
             
-            if (data) {
-                data.forEach(d => {
-                    const val = parseFloat(d.precio) || 0;
-                    total += val;
-                    html += `<div class="item"><span><b>${d.cliente}</b></span><span class="price">${val.toFixed(2)}€</span></div>`;
-                });
-            }
+            data.forEach(d => {
+                const val = parseFloat(d.precio) || 0;
+                total += val;
+                html += `<div class="item"><span><b>${d.cliente}</b></span><span class="price">${val.toFixed(2)}€</span></div>`;
+            });
             
             document.getElementById('bal').innerText = total.toFixed(2) + "€";
             document.getElementById('lista').innerHTML = html || "<p style='text-align:center; opacity:0.5;'>Sin registros hoy.</p>";
             document.getElementById('error-display').style.display = 'none';
         } catch (e) {
-            mostrarError(e.message || "Error desconocido al cargar");
+            mostrarError(e.message);
         }
     }
 
@@ -142,31 +139,39 @@
         if (!c.value || !p.value) return;
 
         b.disabled = true;
-        b.innerText = "GUARDANDO...";
+        b.innerText = "PROCESANDO...";
 
         try {
-            const { error } = await client
-                .from('registros')
-                .insert([{ 
-                    cliente: c.value.trim(), 
-                    precio: parseFloat(p.value) 
-                }]);
+            const response = await fetch(URL_REST, {
+                method: 'POST',
+                headers: {
+                    'apikey': KEY_SB,
+                    'Authorization': `Bearer ${KEY_SB}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify({
+                    cliente: c.value.trim(),
+                    precio: parseFloat(p.value)
+                })
+            });
 
-            if (error) throw error;
+            if (!response.ok) throw new Error(await response.text());
 
             c.value = ""; 
             p.value = "";
             await cargar();
         } catch (e) {
-            mostrarError("Fallo al guardar: " + e.message);
+            mostrarError("Fallo: " + e.message);
         } finally {
             b.disabled = false;
             b.innerText = "GUARDAR REGISTRO";
         }
     }
 
-    document.getElementById('btnG').onclick = guardar;
+    // Iniciar
     window.onload = cargar;
+    document.getElementById('btnG').onclick = guardar;
 </script>
 </body>
 </html>
