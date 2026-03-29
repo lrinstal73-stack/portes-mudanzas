@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logística Luis - Sistema Resiliente</title>
+    <title>Logística Luis - Diagnóstico Directo</title>
     <style>
         :root {
             --bg: #0f172a;
@@ -32,44 +32,40 @@
         
         .form-box { 
             background: var(--card); padding: 20px; border-radius: 20px; margin-bottom: 25px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
         input { 
             width: 100%; padding: 16px; margin-bottom: 12px; 
             border-radius: 12px; border: 1px solid #334155; 
             background: #0f172a; color: white; font-size: 16px; box-sizing: border-box; 
-            outline: none; transition: border 0.2s;
+            outline: none;
         }
-        input:focus { border-color: var(--primary); }
         
         button#btnG { 
             width: 100%; padding: 16px; border-radius: 12px; border: none; 
             background: var(--primary); color: white; font-size: 16px; font-weight: bold; 
-            cursor: pointer; transition: transform 0.1s, opacity 0.2s;
+            cursor: pointer;
         }
-        button#btnG:active { transform: scale(0.98); }
         button:disabled { opacity: 0.5; }
 
         .item { 
             background: var(--card); padding: 16px; margin-bottom: 10px; 
             border-radius: 15px; display: flex; justify-content: space-between; 
             align-items: center; border-left: 5px solid var(--primary);
-            animation: slideIn 0.3s ease-out;
-        }
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
         }
         .price { font-weight: 800; color: var(--success); font-size: 19px; }
 
-        #error-display {
-            background: rgba(239, 68, 68, 0.9);
-            color: #fff;
-            padding: 12px; border-radius: 12px;
-            margin-bottom: 15px; display: none;
-            font-size: 13px; text-align: center;
-            border: 1px solid var(--danger);
-            position: sticky; top: 10px; z-index: 100;
+        #debug-log {
+            background: #000;
+            color: #0f0;
+            font-family: monospace;
+            font-size: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 20px;
+            max-height: 100px;
+            overflow-y: auto;
+            display: block;
+            border: 1px solid #334155;
         }
     </style>
 </head>
@@ -77,59 +73,56 @@
     <div class="container">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
             <h2 style="color:var(--primary); font-size:20px; margin:0; font-weight:800;">LOGÍSTICA LUIS</h2>
-            <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:6px 12px; border-radius:8px; font-size:12px; cursor:pointer;">REINTENTAR</button>
+            <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:6px 12px; border-radius:8px; font-size:12px;">REFRESCAR</button>
         </div>
 
-        <div id="error-display" onclick="this.style.display='none'"></div>
-
         <div id="balance-card">
-            <span style="font-size:12px; font-weight:bold; text-transform:uppercase; opacity:0.9; letter-spacing:1px;">Ganancia de Hoy</span>
+            <span style="font-size:12px; font-weight:bold; text-transform:uppercase; opacity:0.9;">Hoy</span>
             <span id="bal">0.00€</span>
         </div>
 
         <div class="form-box">
-            <input type="text" id="cli" placeholder="Nombre del cliente..." autocomplete="off">
-            <input type="number" id="pre" placeholder="Importe (€)" inputmode="decimal">
-            <button id="btnG">GUARDAR REGISTRO</button>
+            <input type="text" id="cli" placeholder="Cliente" autocomplete="off">
+            <input type="number" id="pre" placeholder="Importe €" inputmode="decimal">
+            <button id="btnG">GUARDAR</button>
         </div>
 
         <div id="lista"></div>
+
+        <div id="debug-log">Iniciando sistema...</div>
     </div>
 
 <script>
     const URL_BASE = "https://hkrbyjxspermnedciqrr.supabase.co/rest/v1/logistica_luis";
     const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
 
-    function err(m) {
-        const d = document.getElementById('error-display');
-        d.innerText = m + " (Toca para ocultar)";
-        d.style.display = 'block';
-        setTimeout(() => { d.style.display = 'none'; }, 5000);
+    function log(m) {
+        const d = document.getElementById('debug-log');
+        d.innerHTML += "<br>> " + m;
+        d.scrollTop = d.scrollHeight;
     }
 
-    async function cargar(retryCount = 0) {
+    async function cargar() {
+        log("Cargando datos...");
         try {
             const d = new Date();
             d.setHours(0,0,0,0);
-            const fechaFiltro = d.toISOString();
-            const cacheBuster = `&t=${Date.now()}`;
-
-            const res = await fetch(`${URL_BASE}?select=*&created_at=gte.${fechaFiltro}&order=created_at.desc${cacheBuster}`, {
+            
+            const res = await fetch(`${URL_BASE}?select=*&created_at=gte.${d.toISOString()}&order=created_at.desc`, {
                 method: 'GET',
-                mode: 'cors',
                 headers: {
                     'apikey': API_KEY,
-                    'Authorization': 'Bearer ' + API_KEY,
-                    'Range': '0-99'
+                    'Authorization': 'Bearer ' + API_KEY
                 }
             });
 
-            if (!res.ok) throw new Error("Error " + res.status);
+            if (!res.ok) throw new Error("Status: " + res.status);
 
             const data = await res.json();
+            log("Recibidos: " + data.length);
+
             let sum = 0;
             let h = "";
-            
             data.forEach(x => {
                 const p = parseFloat(x.precio) || 0;
                 sum += p;
@@ -137,15 +130,9 @@
             });
 
             document.getElementById('bal').innerText = sum.toFixed(2) + "€";
-            document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5;margin-top:20px;'>No hay datos para hoy.</p>";
-            document.getElementById('error-display').style.display = 'none';
+            document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5;'>Sin datos hoy.</p>";
         } catch (e) {
-            console.error(e);
-            if (retryCount < 2) {
-                setTimeout(() => cargar(retryCount + 1), 1000);
-            } else {
-                err("Fallo de red persistente. Reintenta manualmente.");
-            }
+            log("ERROR CARGA: " + e.message);
         }
     }
 
@@ -156,16 +143,12 @@
 
         if (!c.value || !p.value) return;
 
-        const valCliente = c.value.trim();
-        const valPrecio = parseFloat(p.value);
-
         b.disabled = true;
-        b.innerText = "ENVIANDO...";
+        log("Enviando: " + c.value);
 
         try {
             const res = await fetch(URL_BASE, {
                 method: "POST",
-                mode: 'cors',
                 headers: {
                     "apikey": API_KEY,
                     "Authorization": "Bearer " + API_KEY,
@@ -173,31 +156,27 @@
                     "Prefer": "return=minimal"
                 },
                 body: JSON.stringify({
-                    cliente: valCliente,
-                    precio: valPrecio
+                    cliente: c.value.trim(),
+                    precio: parseFloat(p.value)
                 })
             });
 
-            if (!res.ok) throw new Error("Error en envío");
+            if (!res.ok) {
+                const txt = await res.text();
+                throw new Error(res.status + ": " + txt);
+            }
 
-            c.value = ""; 
-            p.value = "";
-            // Pequeño retardo para dar tiempo a la base de datos a indexar
-            setTimeout(cargar, 500);
+            log("¡Guardado ok!");
+            c.value = ""; p.value = "";
+            await cargar();
         } catch (e) {
-            err("No se pudo guardar. Comprueba tu conexión a internet.");
+            log("ERROR GUARDAR: " + e.message);
         } finally {
             b.disabled = false;
-            b.innerText = "GUARDAR REGISTRO";
         }
     }
 
-    window.onload = () => {
-        cargar();
-        // Recarga automática cada 5 minutos por si dejas la pestaña abierta
-        setInterval(cargar, 300000);
-    };
-    
+    window.onload = cargar;
     document.getElementById('btnG').onclick = guardar;
 </script>
 </body>
