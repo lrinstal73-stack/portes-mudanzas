@@ -69,7 +69,7 @@
         <div id="error-ui" class="error-msg"></div>
 
         <div id="balance-card">
-            <span style="font-size:11px; font-weight:bold; text-transform:uppercase; opacity:0.9;">Hoy</span>
+            <span style="font-size:11px; font-weight:bold; text-transform:uppercase; opacity:0.9;">Total Hoy</span>
             <span id="bal">0.00€</span>
         </div>
 
@@ -86,10 +86,18 @@
     const URL_BASE = "https://hkrbyjxspermnedciqrr.supabase.co/rest/v1/logistica_luis";
     const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
 
+    // Función para obtener la fecha actual en formato YYYY-MM-DD local
+    function getFechaLocal() {
+        const d = new Date();
+        return d.getFullYear() + '-' + 
+               String(d.getMonth() + 1).padStart(2, '0') + '-' + 
+               String(d.getDate()).padStart(2, '0');
+    }
+
     async function cargar() {
         const errUI = document.getElementById('error-ui');
         try {
-            // Bajamos los últimos 100 para asegurar que cubrimos el día entero sin importar el desfase
+            // Traemos los últimos 100 registros
             const url = `${URL_BASE}?select=*&order=created_at.desc&limit=100&t=${Date.now()}`;
             
             const res = await fetch(url, {
@@ -100,24 +108,20 @@
                 }
             });
 
-            if (!res.ok) throw new Error("Fallo de servidor");
+            if (!res.ok) throw new Error();
 
             const data = await res.json();
-            
-            // Usamos la fecha del sistema (España) para comparar
-            const ahora = new Date();
-            const diaHoy = ahora.getDate();
-            const mesHoy = ahora.getMonth();
-            const anioHoy = ahora.getFullYear();
+            const hoyString = getFechaLocal();
             
             let sum = 0;
             let h = "";
             
             data.forEach(x => {
-                const f = new Date(x.created_at);
+                // Extraemos solo la parte YYYY-MM-DD del campo created_at de la base de datos
+                const fechaDB = x.created_at.split('T')[0];
                 
-                // Si el registro coincide con el día, mes y año actual en el móvil del usuario
-                if (f.getDate() === diaHoy && f.getMonth() === mesHoy && f.getFullYear() === anioHoy) {
+                // Si coinciden las fechas (ignorando horas por completo)
+                if (fechaDB === hoyString) {
                     const p = parseFloat(x.precio) || 0;
                     sum += p;
                     h += `<div class="item"><span><b>${x.cliente.toUpperCase()}</b></span><span class="price">${p.toFixed(2)}€</span></div>`;
@@ -128,7 +132,7 @@
             document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5;'>Sin registros hoy.</p>";
             errUI.style.display = 'none';
         } catch (e) {
-            errUI.innerText = "Error de red. Intenta refrescar.";
+            errUI.innerText = "Error de conexión.";
             errUI.style.display = 'block';
         }
     }
@@ -163,10 +167,9 @@
             c.value = ""; 
             p.value = "";
             
-            // Recarga instantánea
             setTimeout(cargar, 300);
         } catch (e) {
-            alert("Fallo al guardar registro.");
+            alert("Error al guardar.");
         } finally {
             b.disabled = false;
             b.innerText = "GUARDAR";
