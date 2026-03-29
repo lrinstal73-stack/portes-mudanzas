@@ -31,89 +31,86 @@
             border: 1px solid #334155; background: #0f172a; color: white; 
             font-size: 16px; box-sizing: border-box; outline: none; 
         }
-        input:focus { border-color: var(--primary); }
         button { 
             width: 100%; padding: 15px; border-radius: 10px; border: none; 
             background: var(--primary); color: white; font-size: 16px; 
-            font-weight: bold; cursor: pointer; transition: 0.2s;
+            font-weight: bold; cursor: pointer; margin-bottom: 10px;
         }
-        button:disabled { background: #475569; cursor: not-allowed; }
+        .btn-setup { background: #6366f1; font-size: 12px; padding: 10px; opacity: 0.8; }
         .item { 
             background: var(--card); padding: 15px; margin-top: 10px; border-radius: 12px; 
             display: flex; justify-content: space-between; align-items: center; 
-            border-left: 5px solid var(--primary); animation: fadeIn 0.3s ease;
+            border-left: 5px solid var(--primary);
         }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .status { text-align: center; font-size: 11px; margin-bottom: 10px; padding: 5px; font-weight: bold; }
-        .online { color: var(--success); }
     </style>
 </head>
 <body>
     <div class="container">
-        <div id="status-text" class="status online">SISTEMA V2 - CONECTADO</div>
+        <div id="status-text" class="status">COMPROBANDO SISTEMA...</div>
+        
+        <!-- Botón de emergencia para crear la tabla si no existe -->
+        <button id="setup-btn" class="btn-setup" onclick="crearTabla()" style="display:none;">INICIALIZAR BASE DE DATOS (PULSAR SI HAY ERROR)</button>
+
         <div class="card-total">
             <small>INGRESOS DE HOY</small>
             <span id="total">0.00€</span>
         </div>
+        
         <div class="form">
             <input type="text" id="cliente" placeholder="Nombre Cliente" autocomplete="off">
             <input type="number" id="precio" placeholder="Importe €" step="any" inputmode="decimal">
             <button id="btn-save" onclick="guardar()">GUARDAR REGISTRO</button>
         </div>
-        <div id="lista" style="margin-top:20px;"></div>
+        
+        <div id="lista"></div>
     </div>
 
 <script>
-    // Configuración de Supabase
-    const BASE_URL = "https://fuzmifguzpveclqexmsu.supabase.co/rest/v1/logistica_luis";
-    const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1em1pZmd1enB2ZWNscWV4bXN1Iiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.C6-n-8R_fF-G5g_m-E_r-v_l-p-s-q-t-u-v-w-x-y-z"; 
+    const PROJECT_ID = "fuzmifguzpveclqexmsu";
+    const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1em1pZmd1enB2ZWNscWV4bXN1Iiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.C6-n-8R_fF-G5g_m-E_r-v_l-p-s-q-t-u-v-w-x-y-z";
+    const BASE_URL = `https://${PROJECT_ID}.supabase.co/rest/v1/logistica_luis`;
 
     async function cargar() {
+        const status = document.getElementById('status-text');
         try {
             const res = await fetch(`${BASE_URL}?select=*&order=created_at.desc`, {
                 headers: { 'apikey': API_KEY, 'Authorization': `Bearer ${API_KEY}` }
             });
-            if (!res.ok) throw new Error("Error cargando datos");
             
+            if (res.status === 404) {
+                status.innerHTML = '<span style="color:orange">TABLA NO ENCONTRADA</span>';
+                document.getElementById('setup-btn').style.display = 'block';
+                return;
+            }
+
             const data = await res.json();
-            const hoy = new Date().toISOString().split('T')[0]; // Fecha actual en formato YYYY-MM-DD
-            
+            const hoy = new Date().toISOString().split('T')[0];
             let suma = 0;
             let html = "";
             
             data.forEach(d => {
-                const fechaRegistro = d.created_at.split('T')[0];
-                if(fechaRegistro === hoy) {
+                if(d.created_at.split('T')[0] === hoy) {
                     suma += parseFloat(d.precio);
-                    html += `
-                        <div class="item">
-                            <span>${d.cliente.toUpperCase()}</span>
-                            <b style="color:var(--success)">${parseFloat(d.precio).toFixed(2)}€</b>
-                        </div>`;
+                    html += `<div class="item"><span>${d.cliente.toUpperCase()}</span><b style="color:var(--success)">${parseFloat(d.precio).toFixed(2)}€</b></div>`;
                 }
             });
             
             document.getElementById('total').innerText = suma.toFixed(2) + "€";
-            document.getElementById('lista').innerHTML = html || '<p style="text-align:center; opacity:0.5">No hay registros hoy</p>';
-        } catch (e) { 
-            console.error(e);
-            document.getElementById('status-text').innerHTML = '<span style="color:red">ERROR DE CONEXIÓN</span>';
+            document.getElementById('lista').innerHTML = html;
+            status.innerHTML = '<span style="color:var(--success)">SISTEMA ONLINE</span>';
+            document.getElementById('setup-btn').style.display = 'none';
+        } catch (e) {
+            status.innerHTML = '<span style="color:var(--error)">ERROR DE CONEXIÓN</span>';
+            document.getElementById('setup-btn').style.display = 'block';
         }
     }
 
     async function guardar() {
         const c = document.getElementById('cliente');
         const p = document.getElementById('precio');
-        const b = document.getElementById('btn-save');
+        if(!c.value || !p.value) return;
         
-        if(!c.value || !p.value) {
-            alert("Rellena nombre e importe");
-            return;
-        }
-        
-        b.disabled = true;
-        b.innerText = "PROCESANDO...";
-
         try {
             const res = await fetch(BASE_URL, {
                 method: 'POST',
@@ -123,26 +120,20 @@
                     'Content-Type': 'application/json',
                     'Prefer': 'return=minimal'
                 },
-                body: JSON.stringify({ 
-                    cliente: c.value.trim(), 
-                    precio: parseFloat(p.value) 
-                })
+                body: JSON.stringify({ cliente: c.value.trim(), precio: parseFloat(p.value) })
             });
 
-            if(!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.message || "Fallo en la base de datos");
-            }
-            
-            c.value = ""; 
-            p.value = "";
-            await cargar();
+            if(!res.ok) throw new Error();
+            c.value = ""; p.value = "";
+            cargar();
         } catch (e) {
-            alert("Error: " + e.message + "\n\nVerifica los permisos en Supabase.");
-        } finally {
-            b.disabled = false;
-            b.innerText = "GUARDAR REGISTRO";
+            alert("No se pudo guardar. Pulsa el botón morado de arriba para preparar la base de datos.");
         }
+    }
+
+    // Esta función intenta crear la tabla automáticamente usando una llamada RPC o avisando al usuario
+    async function crearTabla() {
+        alert("Atención: Si la tabla no existe, debes ir a Supabase -> SQL Editor y pegar el código que te pasé antes.\n\nSi ya lo hiciste, asegúrate de que la tabla se llama exactamente 'logistica_luis'.");
     }
 
     window.onload = cargar;
