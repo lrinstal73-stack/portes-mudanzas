@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logística Luis - Diagnóstico Directo</title>
+    <title>Logística Luis - Conexión Directa</title>
     <style>
         :root {
             --bg: #0f172a;
@@ -17,67 +17,67 @@
             font-family: -apple-system, system-ui, sans-serif;
             background-color: var(--bg); 
             color: var(--text); 
-            margin: 0; padding: 15px; 
+            margin: 0; padding: 10px; 
             display: flex; justify-content: center;
         }
         .container { width: 100%; max-width: 450px; }
         
         #balance-card { 
             background: linear-gradient(135deg, #10b981, #059669);
-            padding: 30px 20px; border-radius: 24px; 
-            text-align: center; margin-bottom: 25px; 
-            box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.3);
+            padding: 25px 15px; border-radius: 20px; 
+            text-align: center; margin-bottom: 20px; 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
         }
-        #bal { font-size: 48px; font-weight: 900; display: block; letter-spacing: -1px; }
+        #bal { font-size: 42px; font-weight: 900; display: block; }
         
         .form-box { 
-            background: var(--card); padding: 20px; border-radius: 20px; margin-bottom: 25px;
+            background: var(--card); padding: 15px; border-radius: 20px; margin-bottom: 20px;
         }
         input { 
-            width: 100%; padding: 16px; margin-bottom: 12px; 
-            border-radius: 12px; border: 1px solid #334155; 
+            width: 100%; padding: 14px; margin-bottom: 10px; 
+            border-radius: 10px; border: 1px solid #334155; 
             background: #0f172a; color: white; font-size: 16px; box-sizing: border-box; 
             outline: none;
         }
         
         button#btnG { 
-            width: 100%; padding: 16px; border-radius: 12px; border: none; 
+            width: 100%; padding: 14px; border-radius: 10px; border: none; 
             background: var(--primary); color: white; font-size: 16px; font-weight: bold; 
             cursor: pointer;
         }
         button:disabled { opacity: 0.5; }
 
         .item { 
-            background: var(--card); padding: 16px; margin-bottom: 10px; 
-            border-radius: 15px; display: flex; justify-content: space-between; 
-            align-items: center; border-left: 5px solid var(--primary);
+            background: var(--card); padding: 14px; margin-bottom: 8px; 
+            border-radius: 12px; display: flex; justify-content: space-between; 
+            align-items: center; border-left: 4px solid var(--primary);
         }
-        .price { font-weight: 800; color: var(--success); font-size: 19px; }
+        .price { font-weight: 800; color: var(--success); font-size: 18px; }
 
         #debug-log {
             background: #000;
             color: #0f0;
             font-family: monospace;
-            font-size: 10px;
-            padding: 10px;
+            font-size: 9px;
+            padding: 8px;
             border-radius: 8px;
-            margin-top: 20px;
-            max-height: 100px;
+            margin-top: 15px;
+            max-height: 80px;
             overflow-y: auto;
-            display: block;
             border: 1px solid #334155;
+            opacity: 0.7;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h2 style="color:var(--primary); font-size:20px; margin:0; font-weight:800;">LOGÍSTICA LUIS</h2>
-            <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:6px 12px; border-radius:8px; font-size:12px;">REFRESCAR</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h2 style="color:var(--primary); font-size:18px; margin:0; font-weight:800;">LOGÍSTICA LUIS</h2>
+            <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:5px 10px; border-radius:8px; font-size:11px;">REFRESCAR</button>
         </div>
 
         <div id="balance-card">
-            <span style="font-size:12px; font-weight:bold; text-transform:uppercase; opacity:0.9;">Hoy</span>
+            <span style="font-size:11px; font-weight:bold; text-transform:uppercase; opacity:0.9;">Total Hoy</span>
             <span id="bal">0.00€</span>
         </div>
 
@@ -89,7 +89,7 @@
 
         <div id="lista"></div>
 
-        <div id="debug-log">Iniciando sistema...</div>
+        <div id="debug-log">Iniciando...</div>
     </div>
 
 <script>
@@ -103,23 +103,23 @@
     }
 
     async function cargar() {
-        log("Cargando datos...");
+        log("Cargando...");
         try {
-            const d = new Date();
-            d.setHours(0,0,0,0);
+            // Filtro de hoy simplificado
+            const hoy = new Date().toISOString().split('T')[0];
             
-            const res = await fetch(`${URL_BASE}?select=*&created_at=gte.${d.toISOString()}&order=created_at.desc`, {
+            const res = await fetch(`${URL_BASE}?select=*&created_at=gte.${hoy}&order=created_at.desc`, {
                 method: 'GET',
                 headers: {
                     'apikey': API_KEY,
-                    'Authorization': 'Bearer ' + API_KEY
+                    'Content-Type': 'application/json'
                 }
             });
 
-            if (!res.ok) throw new Error("Status: " + res.status);
+            if (!res.ok) throw new Error("Err: " + res.status);
 
             const data = await res.json();
-            log("Recibidos: " + data.length);
+            log("Leídos: " + data.length);
 
             let sum = 0;
             let h = "";
@@ -130,9 +130,9 @@
             });
 
             document.getElementById('bal').innerText = sum.toFixed(2) + "€";
-            document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5;'>Sin datos hoy.</p>";
+            document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5;'>Sin datos registrados.</p>";
         } catch (e) {
-            log("ERROR CARGA: " + e.message);
+            log("FALLO CARGA: " + e.message);
         }
     }
 
@@ -144,14 +144,13 @@
         if (!c.value || !p.value) return;
 
         b.disabled = true;
-        log("Enviando: " + c.value);
+        log("Enviando " + c.value + "...");
 
         try {
             const res = await fetch(URL_BASE, {
                 method: "POST",
                 headers: {
                     "apikey": API_KEY,
-                    "Authorization": "Bearer " + API_KEY,
                     "Content-Type": "application/json",
                     "Prefer": "return=minimal"
                 },
@@ -161,16 +160,13 @@
                 })
             });
 
-            if (!res.ok) {
-                const txt = await res.text();
-                throw new Error(res.status + ": " + txt);
-            }
+            if (!res.ok) throw new Error("Fallo envío: " + res.status);
 
-            log("¡Guardado ok!");
+            log("¡Guardado!");
             c.value = ""; p.value = "";
             await cargar();
         } catch (e) {
-            log("ERROR GUARDAR: " + e.message);
+            log("FALLO GUARDAR: " + e.message);
         } finally {
             b.disabled = false;
         }
