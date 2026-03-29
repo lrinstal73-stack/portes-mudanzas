@@ -10,6 +10,7 @@
             --card: #1e293b;
             --primary: #3b82f6;
             --success: #10b981;
+            --error: #ef4444;
             --text: #f8fafc;
         }
         body { 
@@ -30,25 +31,28 @@
             border: 1px solid #334155; background: #0f172a; color: white; 
             font-size: 16px; box-sizing: border-box; outline: none; 
         }
+        input:focus { border-color: var(--primary); }
         button { 
             width: 100%; padding: 15px; border-radius: 10px; border: none; 
             background: var(--primary); color: white; font-size: 16px; 
-            font-weight: bold; cursor: pointer; 
+            font-weight: bold; cursor: pointer; transition: 0.2s;
         }
+        button:disabled { background: #475569; cursor: not-allowed; }
         .item { 
             background: var(--card); padding: 15px; margin-top: 10px; border-radius: 12px; 
             display: flex; justify-content: space-between; align-items: center; 
-            border-left: 5px solid var(--primary); 
+            border-left: 5px solid var(--primary); animation: fadeIn 0.3s ease;
         }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .status { text-align: center; font-size: 11px; margin-bottom: 10px; padding: 5px; font-weight: bold; }
         .online { color: var(--success); }
     </style>
 </head>
 <body>
     <div class="container">
-        <div id="status-text" class="status online">SISTEMA ONLINE V2</div>
+        <div id="status-text" class="status online">SISTEMA V2 - CONECTADO</div>
         <div class="card-total">
-            <small>TOTAL HOY</small>
+            <small>INGRESOS DE HOY</small>
             <span id="total">0.00€</span>
         </div>
         <div class="form">
@@ -60,7 +64,7 @@
     </div>
 
 <script>
-    // Configuración de conexión Supabase
+    // Configuración de Supabase
     const BASE_URL = "https://fuzmifguzpveclqexmsu.supabase.co/rest/v1/logistica_luis";
     const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1em1pZmd1enB2ZWNscWV4bXN1Iiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.C6-n-8R_fF-G5g_m-E_r-v_l-p-s-q-t-u-v-w-x-y-z"; 
 
@@ -69,33 +73,47 @@
             const res = await fetch(`${BASE_URL}?select=*&order=created_at.desc`, {
                 headers: { 'apikey': API_KEY, 'Authorization': `Bearer ${API_KEY}` }
             });
+            if (!res.ok) throw new Error("Error cargando datos");
+            
             const data = await res.json();
-            const hoy = new Date().toLocaleDateString('en-CA');
+            const hoy = new Date().toISOString().split('T')[0]; // Fecha actual en formato YYYY-MM-DD
+            
             let suma = 0;
             let html = "";
             
             data.forEach(d => {
-                if(d.created_at.split('T')[0] === hoy) {
+                const fechaRegistro = d.created_at.split('T')[0];
+                if(fechaRegistro === hoy) {
                     suma += parseFloat(d.precio);
-                    html += `<div class="item">
-                                <span>${d.cliente.toUpperCase()}</span>
-                                <b style="color:#10b981">${parseFloat(d.precio).toFixed(2)}€</b>
-                             </div>`;
+                    html += `
+                        <div class="item">
+                            <span>${d.cliente.toUpperCase()}</span>
+                            <b style="color:var(--success)">${parseFloat(d.precio).toFixed(2)}€</b>
+                        </div>`;
                 }
             });
             
             document.getElementById('total').innerText = suma.toFixed(2) + "€";
-            document.getElementById('lista').innerHTML = html;
+            document.getElementById('lista').innerHTML = html || '<p style="text-align:center; opacity:0.5">No hay registros hoy</p>';
         } catch (e) { 
-            console.error("Error al cargar:", e); 
+            console.error(e);
+            document.getElementById('status-text').innerHTML = '<span style="color:red">ERROR DE CONEXIÓN</span>';
         }
     }
 
     async function guardar() {
         const c = document.getElementById('cliente');
         const p = document.getElementById('precio');
-        if(!c.value || !p.value) return;
+        const b = document.getElementById('btn-save');
         
+        if(!c.value || !p.value) {
+            alert("Rellena nombre e importe");
+            return;
+        }
+        
+        b.disabled = true;
+        b.innerText = "PROCESANDO...";
+
         try {
             const res = await fetch(BASE_URL, {
                 method: 'POST',
@@ -111,13 +129,19 @@
                 })
             });
 
-            if(!res.ok) throw new Error();
+            if(!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || "Fallo en la base de datos");
+            }
             
             c.value = ""; 
             p.value = "";
-            cargar();
+            await cargar();
         } catch (e) {
-            alert("Error al guardar.");
+            alert("Error: " + e.message + "\n\nVerifica los permisos en Supabase.");
+        } finally {
+            b.disabled = false;
+            b.innerText = "GUARDAR REGISTRO";
         }
     }
 
