@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logística Luis - Conexión Directa</title>
+    <title>Logística Luis - Gestión</title>
     <style>
         :root {
             --bg: #0f172a;
@@ -11,7 +11,6 @@
             --primary: #3b82f6;
             --success: #10b981;
             --text: #f8fafc;
-            --danger: #ef4444;
         }
         body { 
             font-family: -apple-system, system-ui, sans-serif;
@@ -54,18 +53,8 @@
         }
         .price { font-weight: 800; color: var(--success); font-size: 18px; }
 
-        #debug-log {
-            background: #000;
-            color: #0f0;
-            font-family: monospace;
-            font-size: 9px;
-            padding: 8px;
-            border-radius: 8px;
-            margin-top: 15px;
-            max-height: 80px;
-            overflow-y: auto;
-            border: 1px solid #334155;
-            opacity: 0.7;
+        .error-msg {
+            color: #ef4444; font-size: 12px; text-align: center; margin-bottom: 10px; display: none;
         }
     </style>
 </head>
@@ -75,6 +64,8 @@
             <h2 style="color:var(--primary); font-size:18px; margin:0; font-weight:800;">LOGÍSTICA LUIS</h2>
             <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:5px 10px; border-radius:8px; font-size:11px;">REFRESCAR</button>
         </div>
+
+        <div id="error-ui" class="error-msg">Error de conexión. Reintentando...</div>
 
         <div id="balance-card">
             <span style="font-size:11px; font-weight:bold; text-transform:uppercase; opacity:0.9;">Total Hoy</span>
@@ -88,41 +79,29 @@
         </div>
 
         <div id="lista"></div>
-
-        <div id="debug-log">Iniciando...</div>
     </div>
 
 <script>
     const URL_BASE = "https://hkrbyjxspermnedciqrr.supabase.co/rest/v1/logistica_luis";
     const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
 
-    function log(m) {
-        const d = document.getElementById('debug-log');
-        d.innerHTML += "<br>> " + m;
-        d.scrollTop = d.scrollHeight;
-    }
-
     async function cargar() {
-        log("Cargando...");
         try {
-            // Filtro de hoy simplificado
-            const hoy = new Date().toISOString().split('T')[0];
+            // Obtenemos el inicio del día en hora local y lo pasamos a ISO
+            const inicioDia = new Date();
+            inicioDia.setHours(0, 0, 0, 0);
             
-            const res = await fetch(`${URL_BASE}?select=*&created_at=gte.${hoy}&order=created_at.desc`, {
+            const res = await fetch(`${URL_BASE}?select=*&created_at=gte.${inicioDia.toISOString()}&order=created_at.desc`, {
                 method: 'GET',
-                headers: {
-                    'apikey': API_KEY,
-                    'Content-Type': 'application/json'
-                }
+                headers: { 'apikey': API_KEY }
             });
 
-            if (!res.ok) throw new Error("Err: " + res.status);
+            if (!res.ok) throw new Error();
 
             const data = await res.json();
-            log("Leídos: " + data.length);
-
             let sum = 0;
             let h = "";
+            
             data.forEach(x => {
                 const p = parseFloat(x.precio) || 0;
                 sum += p;
@@ -130,9 +109,10 @@
             });
 
             document.getElementById('bal').innerText = sum.toFixed(2) + "€";
-            document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5;'>Sin datos registrados.</p>";
+            document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5;'>Sin registros hoy.</p>";
+            document.getElementById('error-ui').style.display = 'none';
         } catch (e) {
-            log("FALLO CARGA: " + e.message);
+            document.getElementById('error-ui').style.display = 'block';
         }
     }
 
@@ -144,7 +124,7 @@
         if (!c.value || !p.value) return;
 
         b.disabled = true;
-        log("Enviando " + c.value + "...");
+        b.innerText = "GUARDANDO...";
 
         try {
             const res = await fetch(URL_BASE, {
@@ -160,15 +140,15 @@
                 })
             });
 
-            if (!res.ok) throw new Error("Fallo envío: " + res.status);
+            if (!res.ok) throw new Error();
 
-            log("¡Guardado!");
             c.value = ""; p.value = "";
             await cargar();
         } catch (e) {
-            log("FALLO GUARDAR: " + e.message);
+            alert("Error al guardar. Verifica tu conexión.");
         } finally {
             b.disabled = false;
+            b.innerText = "GUARDAR";
         }
     }
 
