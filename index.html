@@ -63,13 +63,13 @@
     <div class="container">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
             <h2 style="color:var(--primary); font-size:18px; margin:0; font-weight:800;">LOGÍSTICA LUIS</h2>
-            <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:5px 10px; border-radius:8px; font-size:11px;">VER TODO</button>
+            <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:5px 10px; border-radius:8px; font-size:11px;">RECARGAR</button>
         </div>
 
         <div id="error-ui" class="error-msg"></div>
 
         <div id="balance-card">
-            <span style="font-size:11px; font-weight:bold; text-transform:uppercase; opacity:0.9;">Total Acumulado</span>
+            <span style="font-size:11px; font-weight:bold; text-transform:uppercase; opacity:0.9;">Total Hoy</span>
             <span id="bal">0.00€</span>
         </div>
 
@@ -88,37 +88,47 @@
 
     async function cargar() {
         const errUI = document.getElementById('error-ui');
+        const listUI = document.getElementById('lista');
+        
         try {
-            // SIN FILTROS DE FECHA. Solo pedimos los últimos 20 registros.
-            const url = `${URL_BASE}?select=*&order=created_at.desc&limit=20&t=${Date.now()}`;
+            // Añadimos un parámetro aleatorio para saltar la caché del navegador
+            const url = `${URL_BASE}?select=*&order=created_at.desc&limit=50&nocache=${Date.now()}`;
             
             const res = await fetch(url, {
                 method: 'GET',
                 headers: { 
                     'apikey': API_KEY,
-                    'Authorization': 'Bearer ' + API_KEY
+                    'Authorization': 'Bearer ' + API_KEY,
+                    'Range-Unit': 'items'
                 }
             });
 
-            if (!res.ok) throw new Error("Status: " + res.status);
+            if (!res.ok) throw new Error("Acceso bloqueado por Supabase");
 
             const data = await res.json();
+            
+            const d = new Date();
+            const hoy = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
             
             let sum = 0;
             let h = "";
             
             data.forEach(x => {
-                const p = parseFloat(x.precio) || 0;
-                sum += p;
-                h += `<div class="item"><span><b>${x.cliente.toUpperCase()}</b></span><span class="price">${p.toFixed(2)}€</span></div>`;
+                const fechaReg = x.created_at.split('T')[0];
+                if (fechaReg === hoy) {
+                    const p = parseFloat(x.precio) || 0;
+                    sum += p;
+                    h += `<div class="item"><span><b>${x.cliente.toUpperCase()}</b></span><span class="price">${p.toFixed(2)}€</span></div>`;
+                }
             });
 
             document.getElementById('bal').innerText = sum.toFixed(2) + "€";
-            document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5;'>No hay datos en la tabla.</p>";
+            listUI.innerHTML = h || "<p style='text-align:center;opacity:0.5;'>Sin registros hoy.</p>";
             errUI.style.display = 'none';
         } catch (e) {
-            errUI.innerText = "Error: " + e.message;
+            errUI.innerText = "Error: La base de datos sigue bloqueada.";
             errUI.style.display = 'block';
+            listUI.innerHTML = "";
         }
     }
 
@@ -148,11 +158,11 @@
             });
 
             if (!res.ok) throw new Error();
-
+            
             c.value = ""; 
             p.value = "";
-            
-            setTimeout(cargar, 300);
+            // Esperamos un poco antes de recargar para que Supabase procese
+            setTimeout(cargar, 500);
         } catch (e) {
             alert("Error al guardar.");
         } finally {
