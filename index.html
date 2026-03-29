@@ -54,7 +54,8 @@
         .price { font-weight: 800; color: var(--success); font-size: 18px; }
 
         .error-msg {
-            color: #ef4444; font-size: 12px; text-align: center; margin-bottom: 10px; display: none;
+            background: #ef4444; color: white; font-size: 12px; text-align: center; 
+            padding: 8px; border-radius: 8px; margin-bottom: 10px; display: none;
         }
     </style>
 </head>
@@ -62,10 +63,10 @@
     <div class="container">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
             <h2 style="color:var(--primary); font-size:18px; margin:0; font-weight:800;">LOGÍSTICA LUIS</h2>
-            <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:5px 10px; border-radius:8px; font-size:11px;">REFRESCAR</button>
+            <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:5px 10px; border-radius:8px; font-size:11px;">ACTUALIZAR</button>
         </div>
 
-        <div id="error-ui" class="error-msg">Error de conexión.</div>
+        <div id="error-ui" class="error-msg"></div>
 
         <div id="balance-card">
             <span style="font-size:11px; font-weight:bold; text-transform:uppercase; opacity:0.9;">Total Hoy</span>
@@ -86,20 +87,23 @@
     const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
 
     async function cargar() {
+        const errUI = document.getElementById('error-ui');
         try {
-            // Generar fecha de hoy a las 00:00:00 en hora local
-            const ahora = new Date();
-            const hoy = ahora.getFullYear() + '-' + 
-                        String(ahora.getMonth() + 1).padStart(2, '0') + '-' + 
-                        String(ahora.getDate()).padStart(2, '0') + 'T00:00:00';
+            // Obtenemos solo la parte de la fecha YYYY-MM-DD
+            const hoy = new Date().toISOString().split('T')[0];
             
-            // Consultar registros mayores o iguales a hoy a las 00:00
-            const res = await fetch(`${URL_BASE}?select=*&created_at=gte.${hoy}&order=created_at.desc`, {
+            // Añadimos cache buster para evitar respuestas antiguas
+            const url = `${URL_BASE}?select=*&created_at=gte.${hoy}&order=created_at.desc&t=${Date.now()}`;
+            
+            const res = await fetch(url, {
                 method: 'GET',
-                headers: { 'apikey': API_KEY }
+                headers: { 
+                    'apikey': API_KEY,
+                    'Authorization': 'Bearer ' + API_KEY
+                }
             });
 
-            if (!res.ok) throw new Error();
+            if (!res.ok) throw new Error("Fallo de servidor");
 
             const data = await res.json();
             let sum = 0;
@@ -112,10 +116,11 @@
             });
 
             document.getElementById('bal').innerText = sum.toFixed(2) + "€";
-            document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5;'>Sin registros hoy.</p>";
-            document.getElementById('error-ui').style.display = 'none';
+            document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5;'>No hay portes para hoy.</p>";
+            errUI.style.display = 'none';
         } catch (e) {
-            document.getElementById('error-ui').style.display = 'block';
+            errUI.innerText = "Error al conectar. Reintenta.";
+            errUI.style.display = 'block';
         }
     }
 
@@ -127,13 +132,14 @@
         if (!c.value || !p.value) return;
 
         b.disabled = true;
-        b.innerText = "GUARDANDO...";
+        b.innerText = "PROCESANDO...";
 
         try {
             const res = await fetch(URL_BASE, {
                 method: "POST",
                 headers: {
                     "apikey": API_KEY,
+                    "Authorization": "Bearer " + API_KEY,
                     "Content-Type": "application/json",
                     "Prefer": "return=minimal"
                 },
@@ -147,17 +153,17 @@
 
             c.value = ""; 
             p.value = "";
-            // Esperar un instante para que el servidor procese y luego recargar
-            setTimeout(cargar, 300);
+            
+            // Recargar tras un pequeño delay para asegurar propagación en DB
+            setTimeout(cargar, 500);
         } catch (e) {
-            alert("Error al guardar. Verifica tu conexión.");
+            alert("Error al guardar registro.");
         } finally {
             b.disabled = false;
             b.innerText = "GUARDAR";
         }
     }
 
-    // Carga inicial
     window.onload = cargar;
     document.getElementById('btnG').onclick = guardar;
 </script>
