@@ -53,21 +53,22 @@
         }
         .price { font-weight: 800; color: var(--success); font-size: 18px; }
 
-        .error-msg {
-            background: #ef4444; color: white; font-size: 12px; text-align: center; 
-            padding: 10px; border-radius: 8px; margin-bottom: 10px; display: none;
-            word-break: break-all;
+        .status-badge {
+            font-size: 10px; text-align: center; margin-bottom: 10px; 
+            padding: 4px; border-radius: 4px; text-transform: uppercase; font-weight: bold;
         }
+        .status-ok { background: #064e3b; color: #10b981; }
+        .status-err { background: #7f1d1d; color: #f87171; }
     </style>
 </head>
 <body>
     <div class="container">
+        <div id="status" class="status-badge status-ok">Iniciando...</div>
+
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
             <h2 style="color:var(--primary); font-size:18px; margin:0; font-weight:800;">LOGÍSTICA LUIS</h2>
-            <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:5px 10px; border-radius:8px; font-size:11px;">FORZAR RECARGA</button>
+            <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:5px 10px; border-radius:8px; font-size:11px;">RECARGAR</button>
         </div>
-
-        <div id="error-ui" class="error-msg"></div>
 
         <div id="balance-card">
             <span style="font-size:11px; font-weight:bold; text-transform:uppercase; opacity:0.9;">Total Hoy</span>
@@ -75,9 +76,9 @@
         </div>
 
         <div class="form-box">
-            <input type="text" id="cli" placeholder="Cliente" autocomplete="off">
+            <input type="text" id="cli" placeholder="Nombre Cliente" autocomplete="off">
             <input type="number" id="pre" placeholder="Importe €" inputmode="decimal" step="any">
-            <button id="btnG">GUARDAR</button>
+            <button id="btnG">GUARDAR REGISTRO</button>
         </div>
 
         <div id="lista"></div>
@@ -88,49 +89,41 @@
     const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
 
     async function cargar() {
-        const errUI = document.getElementById('error-ui');
-        const listUI = document.getElementById('lista');
+        const statusEl = document.getElementById('status');
+        const listEl = document.getElementById('lista');
         
         try {
-            // Consulta ultra-simple sin filtros complejos para diagnosticar
-            const url = `${URL_BASE}?select=*&order=created_at.desc&limit=20&t=${Date.now()}`;
-            
-            const res = await fetch(url, {
-                method: 'GET',
+            const res = await fetch(`${URL_BASE}?select=*&order=created_at.desc&limit=50`, {
                 headers: { 
-                    'apikey': API_KEY,
-                    'Authorization': 'Bearer ' + API_KEY
+                    'apikey': API_KEY, 
+                    'Authorization': 'Bearer ' + API_KEY 
                 }
             });
 
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.message || `Error ${res.status}: Bloqueo de RLS`);
-            }
+            if (!res.ok) throw new Error("Error de conexión");
 
             const data = await res.json();
+            const hoy = new Date().toISOString().split('T')[0];
             
-            const d = new Date();
-            const hoy = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            let total = 0;
+            let html = "";
             
-            let sum = 0;
-            let h = "";
-            
-            data.forEach(x => {
-                const fechaReg = x.created_at.split('T')[0];
-                if (fechaReg === hoy) {
-                    const p = parseFloat(x.precio) || 0;
-                    sum += p;
-                    h += `<div class="item"><span><b>${x.cliente.toUpperCase()}</b></span><span class="price">${p.toFixed(2)}€</span></div>`;
+            data.forEach(item => {
+                const fechaItem = item.created_at.split('T')[0];
+                if (fechaItem === hoy) {
+                    const precio = parseFloat(item.precio) || 0;
+                    total += precio;
+                    html += `<div class="item"><span><b>${item.cliente.toUpperCase()}</b></span><span class="price">${precio.toFixed(2)}€</span></div>`;
                 }
             });
 
-            document.getElementById('bal').innerText = sum.toFixed(2) + "€";
-            listUI.innerHTML = h || "<p style='text-align:center;opacity:0.5;'>Sin registros hoy.</p>";
-            errUI.style.display = 'none';
+            document.getElementById('bal').innerText = total.toFixed(2) + "€";
+            listEl.innerHTML = html || "<p style='text-align:center;opacity:0.5;'>No hay portes registrados hoy.</p>";
+            statusEl.innerText = "Sistema Online";
+            statusEl.className = "status-badge status-ok";
         } catch (e) {
-            errUI.innerText = "DIAGNÓSTICO: " + e.message;
-            errUI.style.display = 'block';
+            statusEl.innerText = "Error: RLS Activo";
+            statusEl.className = "status-badge status-err";
         }
     }
 
@@ -140,7 +133,6 @@
         const b = document.getElementById('btnG');
 
         if (!c.value || !p.value) return;
-
         b.disabled = true;
         b.innerText = "GUARDANDO...";
 
@@ -153,22 +145,22 @@
                     "Content-Type": "application/json",
                     "Prefer": "return=minimal"
                 },
-                body: JSON.stringify({
-                    cliente: c.value.trim(),
-                    precio: parseFloat(p.value)
+                body: JSON.stringify({ 
+                    cliente: c.value.trim(), 
+                    precio: parseFloat(p.value) 
                 })
             });
 
-            if (!res.ok) throw new Error("No se pudo guardar");
+            if (!res.ok) throw new Error();
             
             c.value = ""; 
             p.value = "";
-            setTimeout(cargar, 400);
+            cargar();
         } catch (e) {
-            alert(e.message);
+            alert("Error al guardar. Verifica la conexión.");
         } finally {
             b.disabled = false;
-            b.innerText = "GUARDAR";
+            b.innerText = "GUARDAR REGISTRO";
         }
     }
 
