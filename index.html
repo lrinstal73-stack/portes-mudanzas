@@ -63,13 +63,13 @@
     <div class="container">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
             <h2 style="color:var(--primary); font-size:18px; margin:0; font-weight:800;">LOGÍSTICA LUIS</h2>
-            <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:5px 10px; border-radius:8px; font-size:11px;">ACTUALIZAR</button>
+            <button onclick="cargar()" style="background:none; border:1px solid #334155; color:var(--text); padding:5px 10px; border-radius:8px; font-size:11px;">VER TODO</button>
         </div>
 
         <div id="error-ui" class="error-msg"></div>
 
         <div id="balance-card">
-            <span style="font-size:11px; font-weight:bold; text-transform:uppercase; opacity:0.9;">Total Hoy</span>
+            <span style="font-size:11px; font-weight:bold; text-transform:uppercase; opacity:0.9;">Total Acumulado</span>
             <span id="bal">0.00€</span>
         </div>
 
@@ -86,19 +86,11 @@
     const URL_BASE = "https://hkrbyjxspermnedciqrr.supabase.co/rest/v1/logistica_luis";
     const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJ5anhzcGVybW5lZGNpcXJyIiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.otABinyJLsAW5Z8bY0mNWX0-Z1RUuugXk1_6Ki3TAeo";
 
-    // Función para obtener la fecha actual en formato YYYY-MM-DD local
-    function getFechaLocal() {
-        const d = new Date();
-        return d.getFullYear() + '-' + 
-               String(d.getMonth() + 1).padStart(2, '0') + '-' + 
-               String(d.getDate()).padStart(2, '0');
-    }
-
     async function cargar() {
         const errUI = document.getElementById('error-ui');
         try {
-            // Traemos los últimos 100 registros
-            const url = `${URL_BASE}?select=*&order=created_at.desc&limit=100&t=${Date.now()}`;
+            // SIN FILTROS DE FECHA. Solo pedimos los últimos 20 registros.
+            const url = `${URL_BASE}?select=*&order=created_at.desc&limit=20&t=${Date.now()}`;
             
             const res = await fetch(url, {
                 method: 'GET',
@@ -108,31 +100,24 @@
                 }
             });
 
-            if (!res.ok) throw new Error();
+            if (!res.ok) throw new Error("Status: " + res.status);
 
             const data = await res.json();
-            const hoyString = getFechaLocal();
             
             let sum = 0;
             let h = "";
             
             data.forEach(x => {
-                // Extraemos solo la parte YYYY-MM-DD del campo created_at de la base de datos
-                const fechaDB = x.created_at.split('T')[0];
-                
-                // Si coinciden las fechas (ignorando horas por completo)
-                if (fechaDB === hoyString) {
-                    const p = parseFloat(x.precio) || 0;
-                    sum += p;
-                    h += `<div class="item"><span><b>${x.cliente.toUpperCase()}</b></span><span class="price">${p.toFixed(2)}€</span></div>`;
-                }
+                const p = parseFloat(x.precio) || 0;
+                sum += p;
+                h += `<div class="item"><span><b>${x.cliente.toUpperCase()}</b></span><span class="price">${p.toFixed(2)}€</span></div>`;
             });
 
             document.getElementById('bal').innerText = sum.toFixed(2) + "€";
-            document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5;'>Sin registros hoy.</p>";
+            document.getElementById('lista').innerHTML = h || "<p style='text-align:center;opacity:0.5;'>No hay datos en la tabla.</p>";
             errUI.style.display = 'none';
         } catch (e) {
-            errUI.innerText = "Error de conexión.";
+            errUI.innerText = "Error: " + e.message;
             errUI.style.display = 'block';
         }
     }
@@ -145,7 +130,7 @@
         if (!c.value || !p.value) return;
 
         b.disabled = true;
-        b.innerText = "PROCESANDO...";
+        b.innerText = "GUARDANDO...";
 
         try {
             const res = await fetch(URL_BASE, {
