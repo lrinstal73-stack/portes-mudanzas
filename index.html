@@ -59,6 +59,8 @@
         }
         .status-ok { background: #064e3b; color: #10b981; }
         .status-err { background: #7f1d1d; color: #f87171; }
+        
+        .empty-state { text-align: center; opacity: 0.5; padding: 20px; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -76,9 +78,9 @@
         </div>
 
         <div class="form-box">
-            <input type="text" id="cli" placeholder="Cliente" autocomplete="off">
+            <input type="text" id="cli" placeholder="Nombre del Cliente" autocomplete="off">
             <input type="number" id="pre" placeholder="Importe €" inputmode="decimal" step="any">
-            <button id="btnG">GUARDAR</button>
+            <button id="btnG">GUARDAR REGISTRO</button>
         </div>
 
         <div id="lista"></div>
@@ -93,6 +95,7 @@
         const listEl = document.getElementById('lista');
         
         try {
+            // Petición al API de Supabase
             const res = await fetch(`${URL_BASE}?select=*&order=created_at.desc`, {
                 headers: { 
                     'apikey': API_KEY, 
@@ -103,14 +106,16 @@
 
             if (!res.ok) {
                 const errData = await res.json();
-                throw new Error(errData.message || "RLS Bloqueado");
+                throw new Error(errData.message || "Falla de RLS");
             }
 
             const data = await res.json();
             
-            // Fecha de hoy en formato local YYYY-MM-DD
+            // Lógica de fecha local robusta
             const ahora = new Date();
-            const hoy = ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0') + '-' + String(ahora.getDate()).padStart(2, '0');
+            const hoy = ahora.getFullYear() + '-' + 
+                        String(ahora.getMonth() + 1).padStart(2, '0') + '-' + 
+                        String(ahora.getDate()).padStart(2, '0');
             
             let total = 0;
             let html = "";
@@ -120,16 +125,21 @@
                 if (fechaItem === hoy) {
                     const precio = parseFloat(item.precio) || 0;
                     total += precio;
-                    html += `<div class="item"><span><b>${item.cliente.toUpperCase()}</b></span><span class="price">${precio.toFixed(2)}€</span></div>`;
+                    html += `<div class="item">
+                                <span><b>${item.cliente.toUpperCase()}</b></span>
+                                <span class="price">${precio.toFixed(2)}€</span>
+                             </div>`;
                 }
             });
 
             document.getElementById('bal').innerText = total.toFixed(2) + "€";
-            listEl.innerHTML = html || "<p style='text-align:center;opacity:0.5;'>Sin registros hoy.</p>";
-            statusEl.innerText = "SISTEMA ONLINE";
+            listEl.innerHTML = html || "<div class='empty-state'>Aún no hay registros de hoy.</div>";
+            
+            statusEl.innerText = "SISTEMA CONECTADO";
             statusEl.className = "status-badge status-ok";
         } catch (e) {
-            statusEl.innerText = "ERROR: REVISA POLÍTICAS EN SUPABASE";
+            console.error(e);
+            statusEl.innerText = "ERROR DE PERMISOS (RLS)";
             statusEl.className = "status-badge status-err";
         }
     }
@@ -141,6 +151,7 @@
 
         if (!c.value || !p.value) return;
         b.disabled = true;
+        b.innerText = "GUARDANDO...";
 
         try {
             const res = await fetch(URL_BASE, {
@@ -161,14 +172,16 @@
             
             c.value = ""; 
             p.value = "";
-            cargar();
+            cargar(); // Recargar tras guardar
         } catch (e) {
-            alert("Error al guardar.");
+            alert("Error al intentar guardar el registro.");
         } finally {
             b.disabled = false;
+            b.innerText = "GUARDAR REGISTRO";
         }
     }
 
+    // Inicializar app
     window.onload = cargar;
     document.getElementById('btnG').onclick = guardar;
 </script>
