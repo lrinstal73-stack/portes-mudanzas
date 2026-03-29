@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logística Luis - Portes</title>
-    <!-- Cargamos Supabase de forma segura -->
+    <title>Logística Luis - Portes Hoy</title>
+    <!-- Librería de Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
@@ -14,6 +14,7 @@
             --success: #10b981;
             --text: #f8fafc;
             --accent: #6366f1;
+            --danger: #ef4444;
         }
         body { 
             font-family: -apple-system, system-ui, sans-serif; 
@@ -34,7 +35,7 @@
             margin-bottom: 20px; 
             padding-top: 10px;
         }
-        h2 { margin: 0; color: var(--primary); text-transform: uppercase; font-weight: 900; font-size: 20px; letter-spacing: 1px; }
+        h2 { margin: 0; color: var(--primary); text-transform: uppercase; font-weight: 900; font-size: 18px; letter-spacing: 1px; }
         
         .refresh-btn { 
             background: rgba(59, 130, 246, 0.1); 
@@ -42,7 +43,7 @@
             color: var(--primary); 
             padding: 8px 16px; 
             border-radius: 12px; 
-            font-size: 13px; 
+            font-size: 12px; 
             font-weight: 800;
             cursor: pointer;
         }
@@ -55,7 +56,7 @@
             margin-bottom: 25px; 
             box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.4);
         }
-        #bal-label { font-size: 12px; font-weight: 800; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; }
+        #bal-label { font-size: 11px; font-weight: 800; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; }
         #bal { font-size: 48px; font-weight: 950; display: block; margin-top: 5px; }
         
         .form-box { 
@@ -107,12 +108,17 @@
             align-items: center;
             border-left: 6px solid var(--primary);
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            animation: slideIn 0.3s ease-out;
         }
-        .item b { font-size: 17px; color: #f1f5f9; }
-        .price { font-weight: 900; color: var(--success); font-size: 20px; }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .item b { font-size: 16px; color: #f1f5f9; }
+        .price { font-weight: 900; color: var(--success); font-size: 18px; }
         
         #error-msg {
-            background: rgba(239, 68, 68, 0.2);
+            background: rgba(239, 68, 68, 0.15);
             color: #f87171;
             padding: 12px;
             border-radius: 12px;
@@ -120,7 +126,7 @@
             display: none;
             font-size: 13px;
             text-align: center;
-            border: 1px solid var(--error);
+            border: 1px solid var(--danger);
         }
     </style>
 </head>
@@ -134,14 +140,14 @@
         <div id="error-msg"></div>
 
         <div id="balance-card">
-            <span id="bal-label">Total Acumulado</span>
+            <span id="bal-label">Ganancia de Hoy</span>
             <span id="bal">0.00€</span>
         </div>
 
         <div class="form-box">
-            <input type="text" id="cli" placeholder="Nombre del cliente..." autocomplete="off">
+            <input type="text" id="cli" placeholder="Nombre del cliente..." autocomplete="off" maxlength="30">
             <input type="number" id="pre" placeholder="Importe €" inputmode="decimal" step="any">
-            <button id="btnG">Guardar Porte</button>
+            <button id="btnG">Guardar Registro</button>
         </div>
 
         <div id="lista"></div>
@@ -158,35 +164,47 @@
         const e = document.getElementById('error-msg');
         e.innerText = msg;
         e.style.display = 'block';
-        setTimeout(() => e.style.display = 'none', 6000);
+        setTimeout(() => e.style.display = 'none', 5000);
     }
 
     async function cargar() {
         try {
-            const { data, error } = await client.from('portes').select('*').order('created_at', { ascending: false });
+            // Calculamos el inicio del día local (medianoche)
+            const hoyLocal = new Date();
+            hoyLocal.setHours(0, 0, 0, 0);
+            
+            // Supabase usa UTC, ajustamos para que el filtro sea preciso
+            const isoHoy = hoyLocal.toISOString();
+
+            const { data, error } = await client
+                .from('portes')
+                .select('*')
+                .gte('created_at', isoHoy) 
+                .order('created_at', { ascending: false });
+            
             if (error) throw error;
 
             let total = 0;
             let html = "";
             if (data && data.length > 0) {
                 data.forEach(d => {
-                    const p = parseFloat(d.precio) || 0;
-                    total += p;
+                    const valor = parseFloat(d.precio) || 0;
+                    total += valor;
                     html += `
                         <div class="item">
                             <b>${d.cliente}</b>
-                            <span class="price">${p.toFixed(2)}€</span>
+                            <span class="price">${valor.toFixed(2)}€</span>
                         </div>`;
                 });
             } else {
-                html = "<p style='text-align:center; opacity:0.5; margin-top:20px;'>No hay registros guardados.</p>";
+                html = "<p style='text-align:center; opacity:0.4; margin-top:30px; font-size: 14px;'>No hay servicios hoy.</p>";
             }
             
             document.getElementById('bal').innerText = total.toFixed(2) + "€";
             document.getElementById('lista').innerHTML = html;
         } catch (e) {
-            showError("Error al conectar con la base de datos.");
-            console.error(e);
+            showError("No se pudo actualizar la lista.");
+            console.error("Fetch error:", e);
         }
     }
 
@@ -202,27 +220,30 @@
 
         try {
             const { error } = await client.from('portes').insert([{ 
-                cliente: c.value, 
+                cliente: c.value.trim(), 
                 precio: parseFloat(p.value) 
             }]);
 
             if (error) {
-                showError("No se pudo guardar: " + error.message);
+                showError("Fallo al guardar en la nube.");
             } else {
                 c.value = ""; 
                 p.value = "";
-                if (navigator.vibrate) navigator.vibrate(50); // Vibración de éxito
+                if (window.navigator && window.navigator.vibrate) {
+                    window.navigator.vibrate([30, 30]); 
+                }
                 await cargar();
             }
         } catch (e) {
-            showError("Error de red o conexión.");
+            showError("Sin conexión a Internet.");
         } finally {
             b.disabled = false;
-            b.innerText = "Guardar Porte";
+            b.innerText = "Guardar Registro";
         }
     }
 
     document.getElementById('btnG').onclick = guardar;
+    // Carga inicial
     window.onload = cargar;
 </script>
 </body>
