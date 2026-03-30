@@ -55,8 +55,8 @@
         </div>
         
         <div class="form">
-            <input type="text" id="cliente" placeholder="Cliente" autocomplete="off">
-            <input type="number" id="precio" placeholder="Euros €" step="any" inputmode="decimal">
+            <input type="text" id="cliente" placeholder="Nombre Cliente" autocomplete="off">
+            <input type="number" id="precio" placeholder="Importe €" step="any" inputmode="decimal">
             <button id="btn-save" onclick="guardar()">GUARDAR REGISTRO</button>
         </div>
         
@@ -64,87 +64,6 @@
     </div>
 
 <script>
-    const PROJECT_ID = "fuzmifguzpveclqexmsu";
-    const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1em1pZmd1enB2ZWNscWV4bXN1Iiwicm9sZSI6ImFub255bW91cyIsImlhdCI6MTc0MzA3NzI4N30.C6-n-8R_fF-G5g_m-E_r-v_l-p-s-q-t-u-v-w-x-y-z";
-    const URL = `https://${PROJECT_ID}.supabase.co/rest/v1/logistica_luis`;
-
-    const headers = {
-        'apikey': KEY,
-        'Authorization': `Bearer ${KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-    };
-
-    async function cargar() {
-        const status = document.getElementById('status-text');
-        try {
-            const res = await fetch(`${URL}?select=*&order=created_at.desc`, { headers });
-            
-            if (!res.ok) {
-                status.innerHTML = '<span style="color:orange">ERROR DE TABLA</span>';
-                return;
-            }
-
-            const data = await res.json();
-            const hoy = new Date().toLocaleDateString('sv-SE'); 
-            
-            let suma = 0;
-            let html = "";
-            
-            data.forEach(d => {
-                if(d.created_at.startsWith(hoy)) {
-                    suma += parseFloat(d.precio);
-                    html += `<div class="item"><span>${d.cliente.toUpperCase()}</span><b style="color:var(--success)">${parseFloat(d.precio).toFixed(2)}€</b></div>`;
-                }
-            });
-            
-            document.getElementById('total').innerText = suma.toFixed(2) + "€";
-            document.getElementById('lista').innerHTML = html || '<p style="text-align:center; opacity:0.5">Sin portes hoy</p>';
-            status.innerHTML = '<span style="color:var(--success)">● CONECTADO</span>';
-        } catch (e) {
-            status.innerHTML = '<span style="color:var(--error)">ERROR DE RED</span>';
-        }
-    }
-
-    async function guardar() {
-        const c = document.getElementById('cliente');
-        const p = document.getElementById('precio');
-        const b = document.getElementById('btn-save');
-        
-        if(!c.value || !p.value) return;
-        
-        b.disabled = true;
-        b.innerText = "ENVIANDO...";
-        
-        try {
-            const res = await fetch(URL, {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify({ 
-                    cliente: c.value.trim(), 
-                    precio: parseFloat(p.value) 
-                })
-            });
-
-            if(!res.ok) {
-                const errData = await res.json();
-                console.error("Error Supabase:", errData);
-                throw new Error("Error en servidor");
-            }
-            
-            c.value = ""; 
-            p.value = "";
-            await cargar();
-        } catch (e) {
-            alert("No se pudo guardar. Verifica que el SQL en Supabase se ejecutó correctamente.");
-        } finally {
-            b.disabled = false;
-            b.innerText = "GUARDAR REGISTRO";
-        }
-    }
-
-    window.onload = cargar;
-    setInterval(cargar, 15000);
-</script>
-</body>
-</html>
+    // CONFIGURACIÓN CORREGIDA SEGÚN TUS CAPTURAS
+    const PROJECT_ID = "hkrbjxspermnedciqrr";
+    const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ
