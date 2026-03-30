@@ -12,10 +12,10 @@
         #total { font-size: 48px; font-weight: bold; display: block; }
         .form { background: var(--card); padding: 20px; border-radius: 20px; margin-bottom: 20px; }
         input { width: 100%; padding: 15px; margin-bottom: 12px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: white; font-size: 16px; box-sizing: border-box; outline: none; }
-        button { width: 100%; padding: 15px; border-radius: 10px; border: none; background: var(--primary); color: white; font-size: 16px; font-weight: bold; cursor: pointer; }
+        button { width: 100%; padding: 15px; border-radius: 10px; border: none; background: var(--primary); color: white; font-size: 16px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
         .item { background: var(--card); padding: 15px; margin-top: 10px; border-radius: 12px; display: flex; justify-content: space-between; border-left: 5px solid var(--primary); align-items: center; }
-        .status { text-align: center; font-size: 11px; margin-bottom: 10px; font-weight: bold; text-transform: uppercase; }
+        .status { text-align: center; font-size: 11px; margin-bottom: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
     </style>
 </head>
 <body>
@@ -31,30 +31,38 @@
     </div>
 
 <script>
-    // URL Y KEY FIJAS PARA EVITAR ERRORES DE CONSTRUCCIÓN
-    const SUPABASE_URL = "https://hkrbjxspermnedciqrr.supabase.co/rest/v1/logistica_luis";
+    // CONFIGURACIÓN DE SUPABASE
+    const PROJECT_ID = "hkrbjxspermnedciqrr";
+    
+    // CLAVE API CORREGIDA (Pega tu clave real aquí si la de abajo no es la correcta)
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJqeHNwZXJtbmVkY2lxcnIiLCJyb2xlIjoiYW5vbnltdXMiLCJpYXQiOjE3NDMwODExNDh9.V_r-tXw6X-s-p-s-q-t-u-v-w-x-y-z"; 
 
-    const headers = { 
+    const SUPABASE_URL = `https://${PROJECT_ID}.supabase.co/rest/v1/logistica_luis`;
+
+    const getHeaders = () => ({ 
         'apikey': SUPABASE_KEY, 
         'Authorization': `Bearer ${SUPABASE_KEY}`, 
         'Content-Type': 'application/json', 
         'Prefer': 'return=minimal' 
-    };
+    });
 
     async function cargar() {
         const status = document.getElementById('status-text');
         try {
             const res = await fetch(`${SUPABASE_URL}?select=*&order=created_at.desc`, { 
                 method: 'GET',
-                headers: headers,
-                mode: 'cors'
+                headers: getHeaders()
             });
             
-            if (!res.ok) throw new Error("ERROR HTTP: " + res.status);
+            if (!res.ok) {
+                const errorText = await res.text();
+                throw new Error(`STATUS ${res.status}`);
+            }
             
             const data = await res.json();
-            const hoy = new Date().toISOString().split('T')[0];
+            
+            // Obtener fecha hoy en formato YYYY-MM-DD local
+            const hoy = new Date().toISOString().split('T')[0]; 
             
             let suma = 0; let html = "";
             data.forEach(d => {
@@ -63,12 +71,13 @@
                     html += `<div class="item"><span>${d.cliente.toUpperCase()}</span><b>${parseFloat(d.precio).toFixed(2)}€</b></div>`;
                 }
             });
+            
             document.getElementById('total').innerText = suma.toFixed(2) + "€";
-            document.getElementById('lista').innerHTML = html || '<p style="text-align:center; opacity:0.5">Sin datos hoy</p>';
+            document.getElementById('lista').innerHTML = html || '<p style="text-align:center; opacity:0.5">Sin movimientos hoy</p>';
             status.innerHTML = '<span style="color:#10b981">● SISTEMA ONLINE</span>';
         } catch (e) {
             console.error(e);
-            status.innerHTML = '<span style="color:#ef4444">● ERROR DE CONEXIÓN</span>';
+            status.innerHTML = `<span style="color:#ef4444">● ERROR: ${e.message}</span>`;
         }
     }
 
@@ -76,23 +85,39 @@
         const c = document.getElementById('cliente'); 
         const p = document.getElementById('precio');
         const b = document.getElementById('btn-save');
+        
         if(!c.value || !p.value) return;
-        b.disabled = true; b.innerText = "ENVIANDO...";
+        
+        b.disabled = true; 
+        b.innerText = "ENVIANDO...";
+        
         try {
             const res = await fetch(SUPABASE_URL, {
                 method: 'POST', 
-                headers: headers,
-                mode: 'cors',
-                body: JSON.stringify({ cliente: c.value.trim(), precio: parseFloat(p.value) })
+                headers: getHeaders(),
+                body: JSON.stringify({ 
+                    cliente: c.value.trim(), 
+                    precio: parseFloat(p.value) 
+                })
             });
-            if(!res.ok) throw new Error("Error al guardar");
-            c.value = ""; p.value = ""; await cargar();
+            
+            if(!res.ok) {
+                const errorData = await res.text();
+                throw new Error(errorData);
+            }
+            
+            c.value = ""; 
+            p.value = ""; 
+            await cargar();
         } catch (e) {
-            alert("Error: No hay conexión con la base de datos.");
+            console.error(e);
+            alert("Error al guardar. Verifica la clave y que la tabla exista.");
         } finally {
-            b.disabled = false; b.innerText = "GUARDAR REGISTRO";
+            b.disabled = false; 
+            b.innerText = "GUARDAR REGISTRO";
         }
     }
+
     window.onload = cargar;
 </script>
 </body>
