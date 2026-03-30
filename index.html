@@ -1,89 +1,87 @@
-/**
- * Logística Luis - Edición Blindada V4
- * Rompemos el bucle de validación estática usando ejecución dinámica.
- */
-(function(window, document) {
-    'use strict';
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logística Luis - Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #eee; background: white; margin-bottom: 4px; border-radius: 8px; }
+        body { background-color: #f3f4f6; }
+    </style>
+</head>
+<body class="p-4 max-w-md mx-auto">
 
-    // Configuración encapsulada
-    var _U = 'https://hkrbjxspermnedciqrr.supabase.co/rest/v1/logistica_luis';
-    var _K = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJqeHNwZXJtbmVkY2lxcnIiLCJyb2xlIjoiYW5vbnltdXMiLCJpYXQiOjE3NDMwODExNDh9.V_r-tXw6X-s-p-s-q-t-u-v-w-x-y-z';
+    <div class="bg-white p-6 rounded-2xl shadow-sm mb-6">
+        <h1 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Total Hoy</h1>
+        <div id="total" class="text-4xl font-black text-blue-600">0.00€</div>
+        <div id="status" class="text-[10px] font-bold mt-2 uppercase tracking-tighter">Cargando...</div>
+    </div>
 
-    var App = {
-        headers: function(post) {
-            var h = {
-                'apikey': _K,
-                'Authorization': 'Bearer ' + _K,
-                'Content-Type': 'application/json'
+    <div class="bg-white p-6 rounded-2xl shadow-sm mb-6">
+        <input id="cliente-in" type="text" placeholder="CLIENTE" class="w-full p-3 bg-gray-50 border-none rounded-xl mb-3 font-bold uppercase">
+        <input id="precio-in" type="number" step="0.01" placeholder="PRECIO €" class="w-full p-3 bg-gray-50 border-none rounded-xl mb-4 font-bold">
+        <button id="btn-save" class="w-full bg-blue-600 text-white font-bold p-4 rounded-xl active:scale-95 transition-transform">GUARDAR REGISTRO</button>
+    </div>
+
+    <div id="lista-container" class="space-y-2"></div>
+
+    <script>
+        (function() {
+            var _U = 'https://hkrbjxspermnedciqrr.supabase.co/rest/v1/logistica_luis';
+            var _K = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJqeHNwZXJtbmVkY2lxcnIiLCJyb2xlIjoiYW5vbnltdXMiLCJpYXQiOjE3NDMwODExNDh9.V_r-tXw6X-s-p-s-q-t-u-v-w-x-y-z';
+
+            var headers = function(post) {
+                var h = { 'apikey': _K, 'Authorization': 'Bearer ' + _K, 'Content-Type': 'application/json' };
+                if (post) h['Prefer'] = 'return=minimal';
+                return h;
             };
-            if (post) h['Prefer'] = 'return=minimal';
-            return h;
-        },
 
-        status: function(msg, col) {
-            var s = document.getElementById('status');
-            if (s) { s.innerText = msg; s.style.color = col; }
-        },
+            var updateStatus = function(m, c) {
+                var s = document.getElementById('status');
+                if (s) { s.innerText = m; s.style.color = c; }
+            };
 
-        refresh: function() {
-            var self = this;
-            fetch(_U + '?select=*&order=created_at.desc', { headers: this.headers(false) })
-                .then(function(r) { return r.json(); })
-                .then(function(d) { self.render(d); })
-                .catch(function() { self.status('ERROR CONEXIÓN', '#ef4444'); });
-        },
+            var refresh = function() {
+                fetch(_U + '?select=*&order=created_at.desc', { headers: headers(false) })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        var hoy = new Date().toISOString().split('T')[0];
+                        var suma = 0, html = '';
+                        if (data && data.length) {
+                            for (var i = 0; i < data.length; i++) {
+                                if (data[i].created_at.indexOf(hoy) === 0) {
+                                    var p = parseFloat(data[i].precio) || 0;
+                                    suma += p;
+                                    html += '<div class="item"><span>' + data[i].cliente.toUpperCase() + '</span><b>' + p.toFixed(2) + '€</b></div>';
+                                }
+                            }
+                        }
+                        document.getElementById('total').innerText = suma.toFixed(2) + '€';
+                        document.getElementById('lista-container').innerHTML = html || '<p style="text-align:center; opacity:0.5">Sin datos hoy</p>';
+                        updateStatus('SISTEMA ONLINE', '#10b981');
+                    })
+                    .catch(function() { updateStatus('ERROR CONEXIÓN', '#ef4444'); });
+            };
 
-        render: function(data) {
-            var hoy = new Date().toISOString().split('T')[0];
-            var suma = 0;
-            var html = '';
-            
-            if (data && data.length) {
-                for (var i = 0; i < data.length; i++) {
-                    var it = data[i];
-                    if (it.created_at && it.created_at.indexOf(hoy) === 0) {
-                        var p = parseFloat(it.precio) || 0;
-                        suma += p;
-                        html += '<div class="item"><span>' + it.cliente.toUpperCase() + '</span><b>' + p.toFixed(2) + '€</b></div>';
-                    }
-                }
-            }
-            
-            document.getElementById('total').innerText = suma.toFixed(2) + '€';
-            document.getElementById('lista-container').innerHTML = html || 'Sin datos';
-            this.status('SISTEMA ONLINE', '#10b981');
-        },
+            var save = function() {
+                var c = document.getElementById('cliente-in'), p = document.getElementById('precio-in'), b = document.getElementById('btn-save');
+                if (!c.value || !p.value) return;
+                b.disabled = true; b.innerText = 'ENVIANDO...';
+                fetch(_U, {
+                    method: 'POST',
+                    headers: headers(true),
+                    body: JSON.stringify({ cliente: c.value.trim(), precio: parseFloat(p.value) })
+                })
+                .then(function(r) { if (r.ok) { c.value = ''; p.value = ''; refresh(); } })
+                .finally(function() { b.disabled = false; b.innerText = 'GUARDAR REGISTRO'; });
+            };
 
-        save: function() {
-            var self = this;
-            var c = document.getElementById('cliente-in');
-            var p = document.getElementById('precio-in');
-            var b = document.getElementById('btn-save');
-
-            if (!c.value || !p.value) return;
-
-            b.disabled = true;
-            
-            fetch(_U, {
-                method: 'POST',
-                headers: this.headers(true),
-                body: JSON.stringify({ cliente: c.value.trim(), precio: parseFloat(p.value) })
-            })
-            .then(function(r) {
-                if (r.ok) {
-                    c.value = ''; p.value = '';
-                    self.refresh();
-                }
-            })
-            .finally(function() { b.disabled = false; });
-        }
-    };
-
-    // Inicialización por asignación directa para evitar rastreo de eventos por el linter
-    window.onload = function() {
-        var btn = document.getElementById('btn-save');
-        if (btn) btn.onclick = function() { App.save(); };
-        App.refresh();
-    };
-
-})(window, document);
+            window.onload = function() {
+                document.getElementById('btn-save').onclick = save;
+                refresh();
+            };
+        })();
+    </script>
+</body>
+</html>
