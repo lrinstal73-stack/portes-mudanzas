@@ -31,17 +31,13 @@
     </div>
 
 <script>
-    // CONFIGURACIÓN DE TU PROYECTO
-    const PROJECT_ID = "hkrbjxspermnedciqrr";
-    
-    // CLAVE API CORREGIDA (Copia el código largo de 'anon' 'public' de Supabase dentro de las comillas)
-    const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJqeHNwZXJtbmVkY2lxcnIiLCJyb2xlIjoiYW5vbnltdXMiLCJpYXQiOjE3NDMwODExNDh9.V_r-tXw6X-s-p-s-q-t-u-v-w-x-y-z"; 
-    
-    const URL = `https://${PROJECT_ID}.supabase.co/rest/v1/logistica_luis`;
+    // URL Y KEY FIJAS PARA EVITAR ERRORES DE CONSTRUCCIÓN
+    const SUPABASE_URL = "https://hkrbjxspermnedciqrr.supabase.co/rest/v1/logistica_luis";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJqeHNwZXJtbmVkY2lxcnIiLCJyb2xlIjoiYW5vbnltdXMiLCJpYXQiOjE3NDMwODExNDh9.V_r-tXw6X-s-p-s-q-t-u-v-w-x-y-z"; 
 
     const headers = { 
-        'apikey': KEY, 
-        'Authorization': `Bearer ${KEY}`, 
+        'apikey': SUPABASE_KEY, 
+        'Authorization': `Bearer ${SUPABASE_KEY}`, 
         'Content-Type': 'application/json', 
         'Prefer': 'return=minimal' 
     };
@@ -49,13 +45,17 @@
     async function cargar() {
         const status = document.getElementById('status-text');
         try {
-            const res = await fetch(`${URL}?select=*&order=created_at.desc`, { headers });
-            if (!res.ok) {
-                if (res.status === 401 || res.status === 403) throw new Error("CLAVE API INVÁLIDA");
-                throw new Error("ERROR DE TABLA");
-            }
+            const res = await fetch(`${SUPABASE_URL}?select=*&order=created_at.desc`, { 
+                method: 'GET',
+                headers: headers,
+                mode: 'cors'
+            });
+            
+            if (!res.ok) throw new Error("ERROR HTTP: " + res.status);
+            
             const data = await res.json();
-            const hoy = new Error().stack ? new Date().toISOString().split('T')[0] : new Date().toLocaleDateString('sv-SE'); 
+            const hoy = new Date().toISOString().split('T')[0];
+            
             let suma = 0; let html = "";
             data.forEach(d => {
                 if(d.created_at && d.created_at.startsWith(hoy)) {
@@ -64,10 +64,11 @@
                 }
             });
             document.getElementById('total').innerText = suma.toFixed(2) + "€";
-            document.getElementById('lista').innerHTML = html || '<p style="text-align:center; opacity:0.5">No hay registros hoy</p>';
+            document.getElementById('lista').innerHTML = html || '<p style="text-align:center; opacity:0.5">Sin datos hoy</p>';
             status.innerHTML = '<span style="color:#10b981">● SISTEMA ONLINE</span>';
         } catch (e) {
-            status.innerHTML = `<span style="color:#ef4444">● ${e.message}</span>`;
+            console.error(e);
+            status.innerHTML = '<span style="color:#ef4444">● ERROR DE CONEXIÓN</span>';
         }
     }
 
@@ -78,14 +79,16 @@
         if(!c.value || !p.value) return;
         b.disabled = true; b.innerText = "ENVIANDO...";
         try {
-            const res = await fetch(URL, {
-                method: 'POST', headers: headers,
+            const res = await fetch(SUPABASE_URL, {
+                method: 'POST', 
+                headers: headers,
+                mode: 'cors',
                 body: JSON.stringify({ cliente: c.value.trim(), precio: parseFloat(p.value) })
             });
-            if(!res.ok) throw new Error();
+            if(!res.ok) throw new Error("Error al guardar");
             c.value = ""; p.value = ""; await cargar();
         } catch (e) {
-            alert("No se pudo guardar. Verifica que la clave API sea correcta.");
+            alert("Error: No hay conexión con la base de datos.");
         } finally {
             b.disabled = false; b.innerText = "GUARDAR REGISTRO";
         }
