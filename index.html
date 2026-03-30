@@ -1,6 +1,6 @@
 /**
- * Logística Luis - Versión de Producción (Linter Clean)
- * Refactorización para máxima compatibilidad con validadores de GitHub y Canvas.
+ * Logística Luis - Versión Final de Producción
+ * Optimizada para GitHub Pages y Supabase. 
  */
 
 var API_CONFIG = {
@@ -8,103 +8,89 @@ var API_CONFIG = {
     KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJqeHNwZXJtbmVkY2lxcnIiLCJyb2xlIjoiYW5vbnltdXMiLCJpYXQiOjE3NDMwODExNDh9.V_r-tXw6X-s-p-s-q-t-u-v-w-x-y-z'
 };
 
-var UI = {
-    total: document.getElementById('total'),
-    status: document.getElementById('status'),
-    lista: document.getElementById('lista-container'),
-    inputCliente: document.getElementById('cliente-in'),
-    inputPrecio: document.getElementById('precio-in'),
-    btnSave: document.getElementById('btn-save')
-};
-
 var LogisticaApp = {
-    getHeaders: function() {
-        return {
+    getHeaders: function(isPost) {
+        var h = {
             'apikey': API_CONFIG.KEY,
             'Authorization': 'Bearer ' + API_CONFIG.KEY,
             'Content-Type': 'application/json'
         };
+        if (isPost) h['Prefer'] = 'return=minimal';
+        return h;
     },
 
-    updateStatus: function(msg, color) {
-        if (!UI.status) return;
-        UI.status.innerText = msg;
-        UI.status.style.color = color;
+    status: function(m, c) {
+        var e = document.getElementById('status');
+        if (e) { e.innerText = m; e.style.color = c; }
     },
 
-    fetchRecords: function() {
+    fetch: function() {
         var self = this;
         fetch(API_CONFIG.URL + '?select=*&order=created_at.desc', {
             method: 'GET',
-            headers: this.getHeaders()
+            headers: this.getHeaders(false)
         })
         .then(function(r) { return r.json(); })
         .then(function(d) { self.render(d); })
-        .catch(function() { self.updateStatus('ERROR DE CARGA', '#ef4444'); });
+        .catch(function(e) { 
+            console.error(e);
+            self.status('ERROR DE RED', '#ef4444'); 
+        });
     },
 
     render: function(data) {
         var hoy = new Date().toISOString().split('T')[0];
-        var suma = 0;
-        var html = '';
-
-        for (var i = 0; i < data.length; i++) {
-            var item = data[i];
-            if (item.created_at && item.created_at.indexOf(hoy) === 0) {
-                var num = parseFloat(item.precio) || 0;
-                suma += num;
-                html += '<div class="item"><span>' + item.cliente.toUpperCase() + '</span><b>' + num.toFixed(2) + '€</b></div>';
+        var suma = 0, html = '';
+        if (data && data.length) {
+            for (var i = 0; i < data.length; i++) {
+                var item = data[i];
+                if (item.created_at && item.created_at.indexOf(hoy) === 0) {
+                    var v = parseFloat(item.precio) || 0;
+                    suma += v;
+                    html += '<div class="item"><span>' + item.cliente.toUpperCase() + '</span><b>' + v.toFixed(2) + '€</b></div>';
+                }
             }
         }
-
-        UI.total.innerText = suma.toFixed(2) + '€';
-        UI.lista.innerHTML = html || '<p style="text-align:center; opacity:0.5">Sin datos hoy</p>';
-        this.updateStatus('SISTEMA ONLINE', '#10b981');
+        document.getElementById('total').innerText = suma.toFixed(2) + '€';
+        document.getElementById('lista-container').innerHTML = html || 'Sin datos hoy';
+        this.status('SISTEMA ONLINE', '#10b981');
     },
 
-    saveRecord: function() {
+    save: function() {
         var self = this;
-        var cliente = UI.inputCliente.value.trim();
-        var precio = parseFloat(UI.inputPrecio.value);
+        var c = document.getElementById('cliente-in'), p = document.getElementById('precio-in'), b = document.getElementById('btn-save');
+        if (!c.value || !p.value) return;
 
-        if (!cliente || isNaN(precio)) return;
-
-        UI.btnSave.disabled = true;
-        UI.btnSave.innerText = 'ENVIANDO...';
-
-        var headers = this.getHeaders();
-        headers['Prefer'] = 'return=minimal';
+        b.disabled = true;
+        b.innerText = 'ENVIANDO...';
 
         fetch(API_CONFIG.URL, {
             method: 'POST',
-            headers: headers,
-            body: JSON.stringify({ cliente: cliente, precio: precio })
+            headers: this.getHeaders(true),
+            body: JSON.stringify({ cliente: c.value.trim(), precio: parseFloat(p.value) })
         })
-        .then(function(response) {
-            if (response.ok) {
-                UI.inputCliente.value = '';
-                UI.inputPrecio.value = '';
-                self.fetchRecords();
+        .then(function(r) {
+            if (r.ok) {
+                c.value = ''; p.value = '';
+                self.fetch();
+            } else {
+                throw new Error('Error en respuesta');
             }
         })
-        .catch(function() {
-            console.error('Error de red');
+        .catch(function(e) {
+            console.error(e);
+            alert('Error al guardar. Revisa la conexión.');
         })
         .finally(function() {
-            UI.btnSave.disabled = false;
-            UI.btnSave.innerText = 'GUARDAR REGISTRO';
+            b.disabled = false;
+            b.innerText = 'GUARDAR REGISTRO';
         });
-    },
-
-    init: function() {
-        var self = this;
-        if (UI.btnSave) {
-            UI.btnSave.addEventListener('click', function() { self.saveRecord(); });
-        }
-        this.fetchRecords();
     }
 };
 
+// Inicialización limpia
 document.addEventListener('DOMContentLoaded', function() {
-    LogisticaApp.init();
+    var btn = document.getElementById('btn-save');
+    if (btn) btn.onclick = function() { LogisticaApp.save(); };
+    LogisticaApp.fetch();
 });
