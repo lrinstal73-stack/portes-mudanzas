@@ -8,14 +8,14 @@
         :root { --bg: #0f172a; --card: #1e293b; --primary: #3b82f6; --success: #10b981; --error: #ef4444; --text: #f8fafc; }
         body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 400px; }
-        .card-total { background: linear-gradient(135deg, #10b981, #059669); padding: 30px; border-radius: 20px; text-align: center; margin-bottom: 20px; }
+        .card-total { background: linear-gradient(135deg, #10b981, #059669); padding: 30px; border-radius: 20px; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
         #total { font-size: 48px; font-weight: bold; display: block; }
         .form { background: var(--card); padding: 20px; border-radius: 20px; margin-bottom: 20px; }
-        input { width: 100%; padding: 15px; margin-bottom: 12px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: white; font-size: 16px; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; border-radius: 10px; border: none; background: var(--primary); color: white; font-size: 16px; font-weight: bold; cursor: pointer; }
-        button:disabled { opacity: 0.5; }
-        .item { background: var(--card); padding: 15px; margin-top: 10px; border-radius: 12px; display: flex; justify-content: space-between; border-left: 5px solid var(--primary); }
-        .status { text-align: center; font-size: 11px; margin-bottom: 10px; font-weight: bold; }
+        input { width: 100%; padding: 15px; margin-bottom: 12px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: white; font-size: 16px; box-sizing: border-box; outline: none; }
+        button { width: 100%; padding: 15px; border-radius: 10px; border: none; background: var(--primary); color: white; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .item { background: var(--card); padding: 15px; margin-top: 10px; border-radius: 12px; display: flex; justify-content: space-between; border-left: 5px solid var(--primary); align-items: center; }
+        .status { text-align: center; font-size: 11px; margin-bottom: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
     </style>
 </head>
 <body>
@@ -23,60 +23,89 @@
         <div id="status-text" class="status">CONECTANDO...</div>
         <div class="card-total"><small>INGRESOS DE HOY</small><span id="total">0.00€</span></div>
         <div class="form">
-            <input type="text" id="cliente" placeholder="Cliente">
-            <input type="number" id="precio" placeholder="Euros €" inputmode="decimal">
+            <input type="text" id="cliente" placeholder="Nombre del Cliente" autocomplete="off">
+            <input type="number" id="precio" placeholder="Importe Euros €" inputmode="decimal" step="any">
             <button id="btn-save" onclick="guardar()">GUARDAR REGISTRO</button>
         </div>
         <div id="lista"></div>
     </div>
 
 <script>
+    // CONFIGURACIÓN OFICIAL
     const PROJECT_ID = "hkrbjxspermnedciqrr";
+    // La clave debe ser exacta. Asegúrate de copiarla completa desde el panel de Supabase si esta falla.
     const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJqeHNwZXJtbmVkY2lxcnIiLCJyb2xlIjoiYW5vbnltdXMiLCJpYXQiOjE3NDMwODExNDh9.V_r-tXw6X-s-p-s-q-t-u-v-w-x-y-z"; 
     const URL = `https://${PROJECT_ID}.supabase.co/rest/v1/logistica_luis`;
 
-    const headers = { 'apikey': KEY, 'Authorization': `Bearer ${KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+    const headers = { 
+        'apikey': KEY, 
+        'Authorization': `Bearer ${KEY}`, 
+        'Content-Type': 'application/json', 
+        'Prefer': 'return=minimal' 
+    };
 
     async function cargar() {
         try {
             const res = await fetch(`${URL}?select=*&order=created_at.desc`, { headers });
-            if (!res.ok) throw new Error();
+            if (!res.ok) throw new Error("Error en respuesta");
             const data = await res.json();
             const hoy = new Date().toLocaleDateString('sv-SE'); 
             let suma = 0; let html = "";
             data.forEach(d => {
-                if(d.created_at.startsWith(hoy)) {
+                if(d.created_at && d.created_at.startsWith(hoy)) {
                     suma += parseFloat(d.precio);
-                    html += `<div class="item"><span>${d.cliente}</span><b>${parseFloat(d.precio).toFixed(2)}€</b></div>`;
+                    html += `<div class="item"><span>${d.cliente.toUpperCase()}</span><b>${parseFloat(d.precio).toFixed(2)}€</b></div>`;
                 }
             });
             document.getElementById('total').innerText = suma.toFixed(2) + "€";
-            document.getElementById('lista').innerHTML = html;
-            document.getElementById('status-text').innerHTML = '<span style="color:#10b981">● CONECTADO</span>';
+            document.getElementById('lista').innerHTML = html || '<p style="text-align:center; opacity:0.5">No hay registros hoy</p>';
+            document.getElementById('status-text').innerHTML = '<span style="color:#10b981">● SISTEMA ONLINE</span>';
         } catch (e) {
-            document.getElementById('status-text').innerHTML = '<span style="color:#ef4444">ERROR DE CONEXIÓN</span>';
+            console.error(e);
+            document.getElementById('status-text').innerHTML = '<span style="color:#ef4444">● ERROR DE AUTENTICACIÓN</span>';
         }
     }
 
     async function guardar() {
-        const c = document.getElementById('cliente'); const p = document.getElementById('precio');
+        const c = document.getElementById('cliente'); 
+        const p = document.getElementById('precio');
         const b = document.getElementById('btn-save');
+        
         if(!c.value || !p.value) return;
-        b.disabled = true; b.innerText = "ENVIANDO...";
+        
+        b.disabled = true; 
+        b.innerText = "ENVIANDO DATOS...";
+        
         try {
             const res = await fetch(URL, {
-                method: 'POST', headers: headers,
-                body: JSON.stringify({ cliente: c.value, precio: parseFloat(p.value) })
+                method: 'POST', 
+                headers: headers,
+                body: JSON.stringify({ 
+                    cliente: c.value.trim(), 
+                    precio: parseFloat(p.value) 
+                })
             });
-            if(!res.ok) throw new Error();
-            c.value = ""; p.value = ""; await cargar();
+            
+            if(!res.ok) {
+                const errorLog = await res.text();
+                throw new Error(errorLog);
+            }
+            
+            c.value = ""; 
+            p.value = ""; 
+            await cargar();
         } catch (e) {
-            alert("Error al guardar. Revisa el SQL de Supabase.");
+            console.error(e);
+            alert("No se pudo guardar. Verifica que la tabla existe y la clave API es correcta.");
         } finally {
-            b.disabled = false; b.innerText = "GUARDAR REGISTRO";
+            b.disabled = false; 
+            b.innerText = "GUARDAR REGISTRO";
         }
     }
+    
     window.onload = cargar;
+    // Sincronizar automáticamente cada 30 segundos
+    setInterval(cargar, 30000);
 </script>
 </body>
 </html>
