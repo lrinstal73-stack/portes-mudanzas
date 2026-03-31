@@ -3,145 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logística Luis | Control</title>
+    <title>Logística Luis | Control Total</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
-        .card { background: white; border-radius: 1.5rem; border: 1px solid #e2e8f0; }
-        .btn-action { background: #2563eb; color: white; font-weight: 900; transition: all 0.2s; }
-        .btn-action:active { transform: scale(0.96); }
-        input { border: 2px solid #e2e8f0 !important; border-radius: 1rem !important; outline: none !important; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .card { background: white; border-radius: 1.5rem; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); }
+        .btn-action { background: #2563eb; color: white; font-weight: 900; transition: all 0.2s; cursor: pointer; border: none; }
+        .btn-action:active { transform: scale(0.95); opacity: 0.9; }
+        .btn-action:disabled { background: #94a3b8; cursor: not-allowed; }
+        input { border: 2px solid #e2e8f0 !important; border-radius: 1rem !important; outline: none !important; transition: border-color 0.2s; }
         input:focus { border-color: #2563eb !important; }
+        .badge { font-size: 10px; font-weight: 800; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; }
+        .success-bg { background-color: rgba(16, 185, 129, 0.1); color: #10b981; }
+        .error-bg { background-color: rgba(239, 68, 68, 0.1); color: #ef4444; }
     </style>
 </head>
 <body class="p-4 max-w-lg mx-auto">
 
     <div class="space-y-6">
-        <!-- Panel de Recaudación -->
-        <div class="card p-8 bg-gradient-to-br from-blue-600 to-blue-800 text-white border-none shadow-xl shadow-blue-200">
-            <p class="text-[10px] font-black text-blue-100 uppercase tracking-widest mb-1">Total de Hoy</p>
-            <div id="total" class="text-6xl font-black tracking-tighter">0.00€</div>
-            <div class="mt-4">
-                <span id="status-badge" class="px-3 py-1 rounded-full bg-blue-500/50 text-[10px] font-bold">CONECTANDO...</span>
+        <!-- Dashboard Principal -->
+        <div class="card p-8 bg-slate-900 text-white border-none shadow-2xl relative overflow-hidden">
+            <div class="relative z-10">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Recaudación de Hoy</p>
+                <div id="total" class="text-6xl font-black tracking-tighter tabular-nums">0.00€</div>
+                <div class="mt-4 flex items-center gap-2">
+                    <span id="status-badge" class="badge bg-slate-800 text-slate-400">Iniciando sistema...</span>
+                </div>
             </div>
+            <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-blue-600/10 rounded-full blur-3xl"></div>
         </div>
 
-        <!-- Formulario de Entrada -->
-        <div class="card p-6 shadow-sm">
-            <div class="space-y-4">
+        <!-- Registro -->
+        <div class="card p-6">
+            <div class="space-y-5">
                 <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Cliente / Concepto</label>
-                    <input id="in-cliente" type="text" placeholder="NOMBRE DEL CLIENTE" class="w-full p-4 bg-slate-50 font-bold uppercase text-slate-700">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-wider">Cliente o Concepto</label>
+                    <input id="in-cliente" type="text" placeholder="EJ: PORTES MUDANZAS" class="w-full p-4 bg-slate-50 font-bold uppercase text-slate-700">
                 </div>
                 <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Importe</label>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-wider">Importe</label>
                     <div class="relative">
                         <input id="in-precio" type="number" step="0.01" inputmode="decimal" placeholder="0.00" class="w-full p-4 bg-slate-50 font-black text-slate-900 text-2xl">
-                        <span class="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-slate-300">€</span>
+                        <span class="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-slate-300 text-xl">€</span>
                     </div>
                 </div>
-                <button id="btn-save" class="btn-action w-full py-5 rounded-2xl shadow-lg shadow-blue-100 uppercase tracking-widest">
-                    Guardar Registro
+                <button id="btn-save" class="btn-action w-full py-5 rounded-2xl shadow-xl shadow-blue-100 uppercase tracking-[0.15em] text-sm">
+                    Guardar en la Nube
                 </button>
             </div>
         </div>
 
-        <!-- Listado de Movimientos -->
-        <div id="list" class="space-y-3">
-            <div class="text-center py-10 opacity-20 font-bold uppercase text-xs">Cargando datos...</div>
+        <!-- Historial -->
+        <div class="space-y-3">
+            <h3 class="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">Actividad de Hoy</h3>
+            <div id="list" class="space-y-3">
+                <div class="text-center py-10 animate-pulse text-slate-300 font-bold uppercase text-[10px]">Cargando base de datos...</div>
+            </div>
         </div>
     </div>
 
     <script>
-        (function() {
-            // Usamos un proxy para saltar restricciones de CORS si el servidor está bloqueado
-            const PROXY = 'https://cors-anywhere.herokuapp.com/'; 
-            const BASE_URL = 'https://hkrbjxspermnedciqrr.supabase.co/rest/v1/logistica_luis';
-            const API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJqeHNwZXJtbmVkY2lxcnIiLCJyb2xlIjoiYW5vbnltdXMiLCJpYXQiOjE3NDMwODExNDh9.V_r-tXw6X-s-p-s-q-t-u-v-w-x-y-z';
+        // Configuración directa
+        const API_URL = 'https://hkrbjxspermnedciqrr.supabase.co/rest/v1/logistica_luis';
+        const API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJqeHNwZXJtbmVkY2lxcnIiLCJyb2xlIjoiYW5vbnltdXMiLCJpYXQiOjE3NDMwODExNDh9.V_r-tXw6X-s-p-s-q-t-u-v-w-x-y-z';
 
-            const headers = (isPost) => ({
-                'apikey': API_KEY,
-                'Authorization': `Bearer ${API_KEY}`,
-                'Content-Type': 'application/json',
-                ...(isPost && { 'Prefer': 'return=minimal' })
-            });
+        const setBadge = (txt, isError) => {
+            const b = document.getElementById('status-badge');
+            b.innerText = txt;
+            b.className = isError ? 'badge error-bg' : 'badge success-bg';
+        };
 
-            const load = async (useProxy = false) => {
-                const url = useProxy ? PROXY + BASE_URL : BASE_URL;
-                try {
-                    const res = await fetch(`${url}?select=*&order=created_at.desc`, { headers: headers(false) });
-                    if (!res.ok) throw new Error('CORS');
-                    
-                    const data = await res.json();
-                    const hoy = new Date().toLocaleDateString('en-CA');
-                    let suma = 0;
-                    let html = '';
+        const fetchHeaders = (post = false) => ({
+            'apikey': API_KEY,
+            'Authorization': `Bearer ${API_KEY}`,
+            'Content-Type': 'application/json',
+            ...(post && { 'Prefer': 'return=minimal' })
+        });
 
-                    data.forEach(item => {
-                        if (item.created_at.startsWith(hoy)) {
-                            const p = parseFloat(item.precio) || 0;
-                            suma += p;
-                            html += `
-                                <div class="card p-4 flex justify-between items-center border-l-4 border-l-blue-500 shadow-sm">
-                                    <span class="font-black text-slate-700 uppercase text-xs">${item.cliente}</span>
-                                    <span class="font-black text-blue-600 text-lg">${p.toFixed(2)}€</span>
-                                </div>`;
-                        }
-                    });
+        const load = async () => {
+            try {
+                // Añadimos cache-busting (?t=...) para forzar al navegador a conectar de nuevo
+                const res = await fetch(`${API_URL}?select=*&order=created_at.desc&_t=${Date.now()}`, {
+                    headers: fetchHeaders()
+                });
 
-                    document.getElementById('total').innerText = `${suma.toFixed(2)}€`;
-                    document.getElementById('list').innerHTML = html || '<div class="text-center py-10 text-slate-300 font-bold uppercase text-[10px]">Sin actividad hoy</div>';
-                    document.getElementById('status-badge').innerText = useProxy ? 'MODO PROXY ACTIVO' : 'SISTEMA ONLINE';
-                    document.getElementById('status-badge').className = 'px-3 py-1 rounded-full bg-emerald-500 text-[10px] font-bold text-white';
-                } catch (e) {
-                    if (!useProxy) {
-                        console.warn("Reintentando por túnel de emergencia...");
-                        load(true);
-                    } else {
-                        document.getElementById('status-badge').innerText = 'ERROR DE RED';
-                        document.getElementById('status-badge').className = 'px-3 py-1 rounded-full bg-rose-500 text-[10px] font-bold text-white';
+                if (!res.ok) throw new Error();
+
+                const data = await res.json();
+                const hoy = new Date().toLocaleDateString('en-CA');
+                let suma = 0;
+                let html = '';
+
+                data.forEach(item => {
+                    const diaItem = item.created_at.split('T')[0];
+                    if (diaItem === hoy) {
+                        const val = parseFloat(item.precio) || 0;
+                        suma += val;
+                        html += `
+                            <div class="card p-4 flex justify-between items-center border-l-4 border-l-blue-600 shadow-sm">
+                                <div>
+                                    <p class="font-black text-slate-800 uppercase text-xs">${item.cliente}</p>
+                                    <p class="text-[9px] text-slate-400 font-bold">${new Date(item.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
+                                </div>
+                                <span class="font-black text-blue-600 text-xl">${val.toFixed(2)}€</span>
+                            </div>`;
                     }
-                }
-            };
+                });
 
-            const save = async () => {
-                const c = document.getElementById('in-cliente');
-                const p = document.getElementById('in-precio');
-                const b = document.getElementById('btn-save');
-                if (!c.value || !p.value) return;
+                document.getElementById('total').innerText = `${suma.toFixed(2)}€`;
+                document.getElementById('list').innerHTML = html || '<div class="text-center py-10 opacity-20 font-bold uppercase text-[10px]">Sin movimientos hoy</div>';
+                setBadge('Conexión Estable', false);
 
-                b.disabled = true;
-                b.innerText = 'GUARDANDO...';
+            } catch (e) {
+                setBadge('Fallo de Red', true);
+                console.error("Error cargando datos:", e);
+            }
+        };
 
-                try {
-                    let res = await fetch(BASE_URL, {
-                        method: 'POST',
-                        headers: headers(true),
-                        body: JSON.stringify({ cliente: c.value.trim().toUpperCase(), precio: parseFloat(p.value) })
-                    });
-                    
-                    if (!res.ok) {
-                        res = await fetch(PROXY + BASE_URL, {
-                            method: 'POST',
-                            headers: headers(true),
-                            body: JSON.stringify({ cliente: c.value.trim().toUpperCase(), precio: parseFloat(p.value) })
-                        });
-                    }
+        const save = async () => {
+            const c = document.getElementById('in-cliente');
+            const p = document.getElementById('in-precio');
+            const b = document.getElementById('btn-save');
 
-                    c.value = ''; p.value = '';
-                    load(document.getElementById('status-badge').innerText.includes('PROXY'));
-                } catch (e) {
-                    alert('Error al guardar. Por favor, asegúrate de haber activado el acceso en el enlace del proxy.');
-                } finally {
-                    b.disabled = false;
-                    b.innerText = 'GUARDAR REGISTRO';
-                }
-            };
+            if (!c.value || !p.value) return;
 
-            document.getElementById('btn-save').onclick = save;
-            load();
-        })();
+            b.disabled = true;
+            b.innerText = 'ENVIANDO...';
+
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: fetchHeaders(true),
+                    body: JSON.stringify({
+                        cliente: c.value.trim().toUpperCase(),
+                        precio: parseFloat(p.value)
+                    })
+                });
+
+                if (!res.ok) throw new Error();
+
+                c.value = '';
+                p.value = '';
+                await load();
+            } catch (e) {
+                alert('No se pudo guardar. Revisa tu conexión a internet.');
+                setBadge('Error al Guardar', true);
+            } finally {
+                b.disabled = false;
+                b.innerText = 'GUARDAR EN LA NUBE';
+            }
+        };
+
+        document.getElementById('btn-save').onclick = save;
+        
+        // Carga inicial tras un pequeño delay para asegurar estabilidad
+        setTimeout(load, 500);
+        
+        // Auto-refresco
+        setInterval(load, 20000);
     </script>
 </body>
 </html>
