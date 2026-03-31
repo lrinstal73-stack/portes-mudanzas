@@ -18,6 +18,7 @@
 <body class="p-4 max-w-lg mx-auto">
 
     <div class="space-y-6">
+        <!-- Panel de Recaudación -->
         <div class="card p-8 bg-gradient-to-br from-blue-600 to-blue-800 text-white border-none shadow-xl shadow-blue-200">
             <p class="text-[10px] font-black text-blue-100 uppercase tracking-widest mb-1">Total de Hoy</p>
             <div id="total" class="text-6xl font-black tracking-tighter">0.00€</div>
@@ -26,10 +27,11 @@
             </div>
         </div>
 
+        <!-- Formulario de Entrada -->
         <div class="card p-6 shadow-sm">
             <div class="space-y-4">
                 <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Cliente</label>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Cliente / Concepto</label>
                     <input id="in-cliente" type="text" placeholder="NOMBRE DEL CLIENTE" class="w-full p-4 bg-slate-50 font-bold uppercase text-slate-700">
                 </div>
                 <div>
@@ -45,13 +47,15 @@
             </div>
         </div>
 
+        <!-- Listado de Movimientos -->
         <div id="list" class="space-y-3">
-            <div class="text-center py-10 opacity-20 font-bold uppercase text-xs">Cargando...</div>
+            <div class="text-center py-10 opacity-20 font-bold uppercase text-xs">Cargando datos...</div>
         </div>
     </div>
 
     <script>
         (function() {
+            // Usamos un proxy para saltar restricciones de CORS si el servidor está bloqueado
             const PROXY = 'https://cors-anywhere.herokuapp.com/'; 
             const BASE_URL = 'https://hkrbjxspermnedciqrr.supabase.co/rest/v1/logistica_luis';
             const API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrcmJqeHNwZXJtbmVkY2lxcnIiLCJyb2xlIjoiYW5vbnltdXMiLCJpYXQiOjE3NDMwODExNDh9.V_r-tXw6X-s-p-s-q-t-u-v-w-x-y-z';
@@ -92,10 +96,10 @@
                     document.getElementById('status-badge').className = 'px-3 py-1 rounded-full bg-emerald-500 text-[10px] font-bold text-white';
                 } catch (e) {
                     if (!useProxy) {
-                        console.warn("Fallo directo. Reintentando por Proxy...");
+                        console.warn("Reintentando por túnel de emergencia...");
                         load(true);
                     } else {
-                        document.getElementById('status-badge').innerText = 'ERROR DE CONEXIÓN';
+                        document.getElementById('status-badge').innerText = 'ERROR DE RED';
                         document.getElementById('status-badge').className = 'px-3 py-1 rounded-full bg-rose-500 text-[10px] font-bold text-white';
                     }
                 }
@@ -128,7 +132,7 @@
                     c.value = ''; p.value = '';
                     load(document.getElementById('status-badge').innerText.includes('PROXY'));
                 } catch (e) {
-                    alert('Error al guardar. Revisa la conexión.');
+                    alert('Error al guardar. Por favor, asegúrate de haber activado el acceso en el enlace del proxy.');
                 } finally {
                     b.disabled = false;
                     b.innerText = 'GUARDAR REGISTRO';
